@@ -1,0 +1,82 @@
+Step Number,Phase,Category,Task/Step,Description,Priority,Prerequisites,Dependencies,Estimated Time,Status
+1,Planning,Requirements Analysis,Analyze Ledger Image,Review the WhatsApp image to identify ledger fields: Date, Description, Debit, Credit, Balance, Account Type,Reference Number,High,None,None,2 hours,Not Started
+2,Planning,Requirements Analysis,Define Data Structure,Identify all required fields: Transaction Date, Account Name, Description, Debit Amount, Credit Amount, Running Balance, Account Code,Transaction Type,High,Step 1,None,3 hours,Not Started
+3,Planning,Requirements Analysis,Define User Stories,Create user stories for: Creating entries, Viewing ledger, Generating reports, Exporting data, Printing ledger,High,Step 1,None,2 hours,Not Started
+4,Database Design,Schema Design,Create Accounts Table,Migration for accounts table with fields: id, account_code, account_name, account_type (Asset/Liability/Equity/Revenue/Expense), parent_account_id, opening_balance,High,None,None,1 hour,Not Started
+5,Database Design,Schema Design,Create Transactions Table,Migration for transactions table: id, date, account_id, description, debit_amount, credit_amount, reference_number, transaction_type, created_by,High,Step 4,Step 4,2 hours,Not Started
+6,Database Design,Schema Design,Create Journal Entries Table,Migration for journal_entries table: id, entry_date, description, reference_number, total_debit, total_credit, created_by,High,Step 5,Step 5,2 hours,Not Started
+7,Database Design,Schema Design,Create Journal Entry Items Table,Migration for journal_entry_items: id, journal_entry_id, account_id, debit_amount, credit_amount, description,High,Step 6,Step 5 and 6,1 hour,Not Started
+8,Database Design,Schema Design,Create Users Table,Migration for users (Laravel default + roles: admin, accountant, viewer),Medium,None,None,1 hour,Not Started
+9,Database Design,Schema Design,Create Settings Table,Migration for settings: fiscal_year_start, fiscal_year_end, company_name, currency,Medium,None,None,1 hour,Not Started
+10,Backend Development,Models,Create Account Model,Create App\Models\Account with relationships and validation rules,High,Step 4,Step 4,2 hours,Not Started
+11,Backend Development,Models,Create Transaction Model,Create App\Models\Transaction with relationships and balance calculation methods,High,Step 5,Step 10,3 hours,Not Started
+12,Backend Development,Models,Create JournalEntry Model,Create App\Models\JournalEntry with validation for double-entry bookkeeping (debits = credits),High,Step 6,Step 10 and 11,3 hours,Not Started
+13,Backend Development,Models,Create JournalEntryItem Model,Create App\Models\JournalEntryItem with relationships,High,Step 7,Step 12,1 hour,Not Started
+14,Backend Development,Controllers,Create AccountController,CRUD operations for accounts: index, create, store, show, edit, update, destroy,High,Step 10,Step 10,4 hours,Not Started
+15,Backend Development,Controllers,Create TransactionController,CRUD operations for transactions with balance calculations,High,Step 11,Step 11,5 hours,Completed
+16,Backend Development,Controllers,Create JournalEntryController,CRUD operations for journal entries with double-entry validation,High,Step 12,Step 12,6 hours,Completed
+17,Backend Development,Controllers,Create LedgerController,Controller to display ledger view matching the image format,High,Step 11,Step 11 and 15,4 hours,Completed
+18,Backend Development,Controllers,Create ReportController,Controller for generating financial reports (Trial Balance, Balance Sheet, Income Statement),Medium,Step 11,Step 11 and 15,5 hours,Completed
+19,Backend Development,Services,Create AccountingService,Service class for complex accounting operations: balance calculations, period closing, validation,High,Step 11,Step 11,4 hours,Completed
+20,Backend Development,Services,Create ReportService,Service for generating various financial reports,Medium,Step 18,Step 19,6 hours,Completed
+21,Backend Development,Validation,Create Request Validators,Create FormRequest classes for Account, Transaction, JournalEntry with validation rules,Medium,Step 10,Step 10-12,3 hours,Completed
+22,Backend Development,API Routes,Define Web Routes,Define routes in routes/web.php for all controllers with proper middleware,High,Step 14-18,Step 14-18,2 hours,Completed
+23,Backend Development,API Routes,Define API Routes (Optional),Define routes in routes/api.php for API access if needed,Low,Step 22,Step 22,1 hour,Completed
+24,Frontend Development,Views Setup,Create Master Layout,Create main layout blade template with navigation, sidebar, header,High,None,None,3 hours,Completed
+25,Frontend Development,Views,Create Account Management Views,Create views for: accounts/index.blade.php, accounts/create.blade.php, accounts/edit.blade.php, accounts/show.blade.php,High,Step 14,Step 24,6 hours,Completed
+26,Frontend Development,Views,Create Transaction Entry View,Create form for entering transactions with debit/credit fields,High,Step 15,Step 24,4 hours,Completed
+27,Frontend Development,Views,Create Journal Entry View,Create form for journal entries with multiple line items,High,Step 16,Step 24,6 hours,Completed
+28,Frontend Development,Views,Create Ledger View,Create ledger display view matching the image format: Date, Description, Debit, Credit, Balance columns,High,Step 17,Step 24,5 hours,Completed
+29,Frontend Development,Views,Create Reports Views,Create views for Trial Balance, Balance Sheet, Income Statement,Profit & Loss,Medium,Step 18,Step 24,4 hours,Completed
+30,Frontend Development,Components,Create Reusable Components,Create Blade components: AccountSelector, DatePicker, CurrencyInput, TransactionForm,Medium,Step 25,Step 25-28,4 hours,Completed
+31,Frontend Development,Styling,Style with Tailwind CSS,Apply Tailwind CSS styling to all views matching professional accounting software appearance,High,Step 24,Step 25-29,8 hours,Completed
+32,Frontend Development,JavaScript,Add Client-side Validation,Add JavaScript validation for forms using Alpine.js or vanilla JS,Medium,Step 26,Step 26-27,3 hours,Completed
+33,Frontend Development,JavaScript,Add Dynamic Form Fields,JavaScript to add/remove journal entry line items dynamically,Medium,Step 27,Step 27,2 hours,Completed
+34,Frontend Development,JavaScript,Add Vue.js Data Tables,Implement Vue.js table library (vxe-table or vue-table-2) for pagination, sorting, filtering in ledger, accounts, customers, employees views,High,Step 28,Step 28 and 25,4 hours,Completed
+35,Testing,Unit Tests,Write Account Model Tests,Write PHPUnit tests for Account model methods,Medium,Step 10,Step 10,2 hours,Completed
+36,Testing,Unit Tests,Write Transaction Model Tests,Write PHPUnit tests for Transaction model and balance calculations,Medium,Step 11,Step 11,3 hours,Completed
+37,Testing,Unit Tests,Write JournalEntry Tests,Write tests for double-entry validation and journal entry creation,Medium,Step 12,Step 12,3 hours,Not Started
+38,Testing,Feature Tests,Write Account Controller Tests,Write feature tests for account CRUD operations,Medium,Step 14,Step 14,3 hours,Not Started
+39,Testing,Feature Tests,Write Transaction Controller Tests,Write feature tests for transaction operations,Medium,Step 15,Step 15,4 hours,Not Started
+40,Testing,Feature Tests,Write JournalEntry Controller Tests,Write feature tests for journal entry operations including validation,Medium,Step 16,Step 16,4 hours,Not Started
+41,Features,Core Features,Implement Account Chart Setup,Create UI for setting up chart of accounts with account codes and hierarchy,High,Step 25,Step 25,4 hours,Completed
+42,Features,Core Features,Implement Transaction Entry,Complete transaction entry form with validation and balance updates,High,Step 26,Step 26 and 19,5 hours,Completed
+43,Features,Core Features,Implement Journal Entry,Complete journal entry form with multiple line items and double-entry validation,High,Step 27,Step 27 and 19,6 hours,Completed
+44,Features,Core Features,Implement Ledger View,Complete ledger view with filtering by account, date range, and running balance calculation,High,Step 28,Step 28 and 19,6 hours,Completed
+45,Features,Core Features,Implement Search and Filter,Add search functionality for transactions, accounts, and filter by date range, account type,Medium,Step 28,Step 28,4 hours,Completed
+46,Features,Reports,Create MySQL Views for Reports,Create MySQL views for trial balance, balance sheet, income statement to optimize report generation performance,High,Step 29,Step 20,3 hours,Completed
+47,Features,Reports,Create MySQL Stored Procedures for Reports,Create stored procedures for complex financial reports (trial balance, balance sheet, P&L) to minimize query overhead and improve performance,High,Step 46,Step 46,4 hours,Completed
+48,Features,Reports,Implement Trial Balance Report,Generate trial balance report using MySQL views/stored procedures showing all accounts with debit and credit totals,Medium,Step 47,Step 47,3 hours,Completed
+49,Features,Reports,Implement Balance Sheet Report,Generate balance sheet using MySQL views/stored procedures showing assets, liabilities, and equity,Medium,Step 47,Step 47,4 hours,Completed
+50,Features,Reports,Implement Income Statement Report,Generate income statement (Profit & Loss) using MySQL views/stored procedures showing revenue and expenses,Medium,Step 47,Step 47,4 hours,Completed
+51,Features,Export Features,Implement Excel Export,Add functionality to export ledger, reports to Excel format using PhpSpreadsheet or Laravel Excel,Medium,Step 44,Step 48-50,6 hours,Completed
+52,Features,Export Features,Implement PDF Export,Add functionality to export ledger and reports to PDF using DomPDF or similar,Medium,Step 44,Step 48-50,6 hours,Completed
+53,Features,Export Features,Implement Print Functionality,Add print-friendly CSS and print buttons for ledger and reports,Medium,Step 28,Step 28 and 29,2 hours,Completed
+54,Security,Authentication,Implement User Authentication,Set up Laravel authentication (login, logout, password reset),High,None,None,2 hours,Completed
+55,Security,Authorization,Implement Role-Based Access Control,Create roles (admin, accountant, viewer, employee) with different permissions,High,Step 54,Step 54,4 hours,Completed
+56,Security,Authorization,Add Middleware for Authorization,Create middleware to protect routes based on user roles,High,Step 55,Step 55,2 hours,Not Started
+57,Security,Data Protection,Add CSRF Protection,Ensure all forms have CSRF tokens (Laravel default),High,None,None,1 hour,Not Started
+58,Security,Data Protection,Add Input Sanitization,Ensure all user inputs are properly validated and sanitized,High,Step 21,Step 21,2 hours,Not Started
+59,Performance,Optimization,Add Database Indexing,Add indexes to frequently queried columns (account_id, date, account_code, customer_id, employee_id, created_by, transaction_type). Review and add composite indexes for common query patterns,High,Step 4-7,Step 4-7,3 hours,Completed
+60,Performance,Optimization,Implement Caching,Add caching for reports and frequently accessed data using Laravel Cache,Low,Step 18,Step 20,3 hours,Not Started
+61,Performance,Optimization,Optimize Queries,Use eager loading, select() methods to fetch only required columns, and query optimization to reduce N+1 queries. Always use select() instead of loading all columns,High,Step 14-18,Step 14-18,5 hours,Completed
+60,User Experience,UX Improvements,Add Loading Indicators,Add loading spinners for async operations,Medium,Step 32,Step 32,2 hours,Not Started
+61,User Experience,UX Improvements,Add Success/Error Messages,Implement flash messages for successful operations and error notifications,High,Step 14,Step 14-18,2 hours,Not Started
+62,User Experience,UX Improvements,Add Form Validation Feedback,Display inline validation errors for better user experience,Medium,Step 32,Step 32,2 hours,Not Started
+63,User Experience,UX Improvements,Add Confirmation Dialogs,Add confirmation dialogs for delete operations and important actions,Medium,Step 14,Step 14-16,2 hours,Not Started
+64,Documentation,Documentation,Create User Manual,Create user guide explaining how to use the accounting software,Low,Step 44,All features complete,8 hours,Not Started
+65,Documentation,Documentation,Create Technical Documentation,Document code structure, API endpoints, database schema,Low,Step 40,All development complete,6 hours,Not Started
+66,Deployment,Deployment Setup,Configure Environment Variables,Set up .env file with database credentials, app key, and other settings,High,None,None,1 hour,Not Started
+67,Deployment,Deployment Setup,Run Migrations,Execute database migrations on production server,High,Step 66,Step 4-9,1 hour,Not Started
+68,Deployment,Deployment Setup,Seed Initial Data,Create seeder for default accounts, admin user, and initial settings,Medium,Step 67,Step 10,2 hours,Not Started
+69,Deployment,Deployment Setup,Configure Web Server,Set up Apache/Nginx configuration for Laravel application,High,None,None,2 hours,Not Started
+70,Deployment,Deployment Setup,Build Frontend Assets,Run npm run build to compile CSS and JavaScript assets,High,Step 31,Step 31,1 hour,Not Started
+71,Maintenance,Maintenance,Set Up Backup System,Implement automated database backups,Medium,Step 67,Step 67,3 hours,Not Started
+72,Maintenance,Maintenance,Set Up Logging,Configure Laravel logging for error tracking and audit trail,Medium,None,None,2 hours,Not Started
+73,Maintenance,Maintenance,Create Audit Trail,Implement audit logging for all financial transactions (who created, modified, deleted),High,Step 11,Step 11,4 hours,Not Started
+74,Features,Recurring Transactions,Recurring Transactions,Automated recurring journal entries,Medium,Step 43,Step 43,5 hours,Not Started
+75,Features,Analytics,Dashboard Analytics,Visual dashboard for financial overview,High,Step 46,Step 46,6 hours,Not Started
+76,Features,Taxation,Tax/GST Support,Tax calculation and reporting,High,Step 43,Step 43,8 hours,Not Started
+77,UI/UX,Theming,Dark Mode,Implement dark mode toggle,Low,Step 31,Step 31,3 hours,Not Started
+78,Features,Notifications,Email Notifications,Email alerts for reports and changes,Low,Step 54,Step 54,4 hours,Not Started
+

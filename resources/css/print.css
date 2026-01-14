@@ -1,0 +1,85 @@
+/* Print Styles for Reports and Ledger */
+
+@media print {
+    /* Hide navigation and non-essential elements */
+    nav, .no-print, button:not(.print-button), .sidebar, .header-actions {
+        display: none !important;
+    }
+
+    /* Page setup */
+    @page {
+        size: A4;
+        margin: 1cm;
+    }
+
+    body {
+        font-size: 10pt;
+        line-height: 1.4;
+        color: #000;
+        background: #fff;
+    }
+
+    /* Report containers */
+    .report-container, .ledger-container {
+        page-break-inside: avoid;
+    }
+
+    /* Tables */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tfoot {
+        display: table-footer-group;
+    }
+
+    /* Headers */
+    h1, h2, h3 {
+        page-break-after: avoid;
+        color: #000;
+    }
+
+    /* Links */
+    a {
+        text-decoration: none;
+        color: #000;
+    }
+
+    /* Remove backgrounds and shadows */
+    * {
+        background: #fff !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    /* Ensure borders are visible */
+    table, th, td {
+        border: 1px solid #000 !important;
+    }
+
+    /* Page breaks */
+    .page-break {
+        page-break-before: always;
+    }
+
+    .no-break {
+        page-break-inside: avoid;
+    }
+
+    /* Summary sections */
+    .summary-section {
+        page-break-inside: avoid;
+        margin-top: 20pt;
+    }
+}
