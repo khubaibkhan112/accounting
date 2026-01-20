@@ -86,6 +86,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { formatCurrency as formatCurrencyValue } from '@/utils/settings';
 
 const props = defineProps({
     node: {
@@ -110,13 +111,7 @@ const toggleExpanded = () => {
     isExpanded.value = !isExpanded.value;
 };
 
-const formatCurrency = (amount) => {
-    if (amount === null || amount === undefined) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(amount);
-};
+const formatCurrency = (amount) => formatCurrencyValue(amount);
 
 const getTypeClass = (type) => {
     const classes = {

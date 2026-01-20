@@ -208,8 +208,11 @@
                                     <input
                                         type="text"
                                         v-model="form.reference_number"
+                                        :disabled="autoGenerateReference && !editingEntry"
+                                        :placeholder="autoGenerateReference && !editingEntry ? 'Auto-generated' : ''"
                                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                     />
+                                    <p v-if="autoGenerateReference && !editingEntry" class="mt-1 text-xs text-gray-500">Reference number will be generated automatically.</p>
                                 </div>
                                 <div class="flex items-end">
                                     <div class="w-full">
@@ -547,6 +550,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { validateForm, hasErrors, clearError, validators } from '@/utils/validation';
+import { formatCurrency as formatCurrencyValue, getSetting } from '@/utils/settings';
 
 export default {
     name: 'JournalEntries',
@@ -568,6 +572,8 @@ export default {
             date_to: '',
         });
 
+        const autoGenerateReference = ref(getSetting('auto_generate_reference', false));
+
         const form = reactive({
             entry_date: new Date().toISOString().split('T')[0],
             description: '',
@@ -578,13 +584,7 @@ export default {
             ],
         });
 
-        const formatCurrency = (amount) => {
-            if (amount === null || amount === undefined) return '$0.00';
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-            }).format(amount);
-        };
+        const formatCurrency = (amount) => formatCurrencyValue(amount);
 
         const formatDate = (date) => {
             if (!date) return '-';
@@ -915,6 +915,7 @@ export default {
             accounts,
             filters,
             form,
+            autoGenerateReference,
             showModal,
             showViewModal,
             editingEntry,

@@ -50,8 +50,12 @@
     </style>
 </head>
 <body>
+    @php($companyName = \App\Models\Setting::get('company_name'))
     <div class="header">
         <h1>Balance Sheet Report</h1>
+        @if($companyName)
+            <p>{{ $companyName }}</p>
+        @endif
         <p>Date: {{ $date ?? now()->format('Y-m-d') }}</p>
     </div>
 

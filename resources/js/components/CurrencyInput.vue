@@ -6,7 +6,7 @@
         </label>
         <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span class="text-gray-500 sm:text-sm">$</span>
+                <span class="text-gray-500 sm:text-sm">{{ currencySymbol }}</span>
             </div>
             <input
                 type="number"
@@ -31,6 +31,7 @@
 
 <script>
 import { computed } from 'vue';
+import { formatCurrency as formatCurrencyValue, getCurrencySymbol } from '@/utils/settings';
 
 export default {
     name: 'CurrencyInput',
@@ -78,13 +79,10 @@ export default {
             if (!props.modelValue || props.modelValue === '') return null;
             const value = parseFloat(props.modelValue);
             if (isNaN(value)) return null;
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            }).format(value);
+            return formatCurrencyValue(value);
         });
+
+        const currencySymbol = computed(() => getCurrencySymbol());
 
         const handleInput = (event) => {
             let value = event.target.value;
@@ -110,6 +108,7 @@ export default {
 
         return {
             formattedValue,
+            currencySymbol,
             handleInput,
         };
     },

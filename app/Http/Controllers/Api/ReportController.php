@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Exports\TrialBalanceExport;
 use App\Exports\BalanceSheetExport;
 use App\Exports\IncomeStatementExport;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -22,8 +23,10 @@ class ReportController extends Controller
      */
     public function trialBalance(Request $request): JsonResponse
     {
-        $dateTo = $request->input('date_to', now()->format('Y-m-d'));
-        $dateFrom = $request->input('date_from', null);
+        $defaultDateTo = Setting::get('fiscal_year_end', now()->format('Y-m-d'));
+        $defaultDateFrom = Setting::get('fiscal_year_start', null);
+        $dateTo = $request->input('date_to', $defaultDateTo);
+        $dateFrom = $request->input('date_from', $defaultDateFrom);
 
         // Create cache key
         $cacheKey = 'trial_balance_' . md5($dateTo . '_' . ($dateFrom ?? 'all'));
@@ -163,7 +166,7 @@ class ReportController extends Controller
      */
     public function balanceSheet(Request $request): JsonResponse
     {
-        $dateTo = $request->input('date_to', now()->format('Y-m-d'));
+        $dateTo = $request->input('date_to', Setting::get('fiscal_year_end', now()->format('Y-m-d')));
 
         // Create cache key
         $cacheKey = 'balance_sheet_' . md5($dateTo);
@@ -229,7 +232,7 @@ class ReportController extends Controller
             $totalLiabilitiesAndEquity = $totalLiabilities + $totalEquity;
             $isBalanced = abs($totalAssets - $totalLiabilitiesAndEquity) < 0.01;
 
-            return response()->json([
+            $response = [
                 'report_type' => 'balance_sheet',
                 'date' => $dateTo,
                 'assets' => [
@@ -308,8 +311,8 @@ class ReportController extends Controller
      */
     public function incomeStatement(Request $request): JsonResponse
     {
-        $dateFrom = $request->input('date_from', now()->startOfYear()->format('Y-m-d'));
-        $dateTo = $request->input('date_to', now()->format('Y-m-d'));
+        $dateFrom = $request->input('date_from', Setting::get('fiscal_year_start', now()->startOfYear()->format('Y-m-d')));
+        $dateTo = $request->input('date_to', Setting::get('fiscal_year_end', now()->format('Y-m-d')));
 
         // Create cache key
         $cacheKey = 'income_statement_' . md5($dateFrom . '_' . $dateTo);

@@ -3,14 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\Transaction; // Add Transaction
 use App\Models\User;
+use App\Traits\LedgerTrait; // Add Trait
+use App\Exports\LedgerExport; // Add Export
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel; // Add Excel
+use Barryvdh\DomPDF\Facade\Pdf; // Add PDF
 
 class EmployeeController extends Controller
 {
+    use LedgerTrait; // Use Trait
     /**
      * Display a listing of the resource.
      */
@@ -128,6 +134,18 @@ class EmployeeController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Get employee transactions (Ledger).
+     */
+    public function transactions(Employee $employee, Request $request)
+    {
+        // employees are typically liability accounts (salary payable) or expense related?
+        // Actually, often "Employee" ledger tracks what we owe them (salary) or advances.
+        // Let's assume 'liability' type logic (Credit increases, Debit decreases).
+        $data = $this->getEntityLedgerData($employee, $request, 'employee_id', 'liability');
+        return response()->json($data);
     }
 
     /**
@@ -316,6 +334,69 @@ class EmployeeController extends Controller
         $employeeId = 'EMP' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
 
         return response()->json(['employee_id' => $employeeId]);
+    }
+
+    /**
+     * Export employee ledger to Excel.
+     */
+    public function exportLedgerExcel(Request $request, Employee $employee)
+    {
+        $data = $this->getEntityLedgerData($employee, $request, 'employee_id', 'liability');
+
+        // Transform summary for export
+        $summary = [
+            'date_from' => $data['date_from'],
+            'date_to' => $data['date_to'],
+            'opening_balance' => $data['opening_balance'],
+            'closing_balance' => $data['closing_balance'],
+            'total_debit' => $data['total_debit'],
+            'total_credit' => $data['total_credit'],
+        ];
+
+        // Prepare account array for export class
+        $account = [
+            'account_code' => $employee->employee_id,
+            'account_name' => $employee->full_name,
+        ];
+
+        // Format ledger data for export
+        $exportData = [];
+        foreach ($data['ledger'] as $entry) {
+            $exportData[] = [
+                $entry['date'],
+                $entry['description'],
+                $entry['reference_number'] ?? '',
+                $entry['debit_amount'],
+                $entry['credit_amount'],
+                $entry['balance'],
+            ];
+        }
+
+        $filename = 'employee_ledger_' . $employee->employee_id . '_' . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(new LedgerExport($exportData, $account, $summary), $filename);
+    }
+
+    /**
+     * Export employee ledger to PDF.
+     */
+    public function exportLedgerPdf(Request $request, Employee $employee)
+    {
+        $data = $this->getEntityLedgerData($employee, $request, 'employee_id', 'liability');
+        
+        // Map data structure for the view
+        $viewData = $data;
+        $viewData['account'] = [
+            'account_code' => $employee->employee_id,
+            'account_name' => $employee->full_name,
+            'opening_balance' => $data['opening_balance'],
+            'current_balance' => $data['closing_balance'],
+        ];
+
+        $pdf = Pdf::loadView('exports.ledger', $viewData);
+        $filename = 'employee_ledger_' . $employee->employee_id . '_' . now()->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 }
 

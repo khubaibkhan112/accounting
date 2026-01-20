@@ -365,7 +365,7 @@
             :isOpen="showLedgerModal" 
             :entityId="selectedCustomer?.id" 
             entityType="customer"
-            :title="selectedCustomer?.name"
+            :title="selectedCustomer?.display_name || selectedCustomer?.company_name || selectedCustomer?.first_name"
             @close="showLedgerModal = false"
         />
     </div>
@@ -376,6 +376,7 @@ import { ref, reactive, onMounted } from 'vue';
 import axios from 'axios';
 import { useToast } from "vue-toastification";
 import LedgerModal from '../../components/LedgerModal.vue';
+import { formatCurrency as formatCurrencyValue } from '@/utils/settings';
 
 export default {
     name: 'Customers',
@@ -420,13 +421,7 @@ export default {
             is_active: true,
         });
 
-        const formatCurrency = (amount) => {
-            if (amount === null || amount === undefined) return '$0.00';
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-            }).format(amount);
-        };
+        const formatCurrency = (amount) => formatCurrencyValue(amount);
 
         const getBalanceClass = (balance) => {
             if (balance === null || balance === undefined) return 'text-gray-900';
@@ -521,13 +516,16 @@ export default {
 
         const viewCustomer = (customer) => {
             // Navigate to customer detail view
-            // this.$router.push({ name: 'admin.customers.show', params: { id: customer.id } });
-            console.log('View customer', customer);
+             console.log('View customer', customer);
         };
 
         const openLedger = (customer) => {
-            selectedCustomer.value = customer;
-            showLedgerModal.value = true;
+            // Redirect to Ledger page
+            // Assuming we are using vue-router attached to instance or composable if available. 
+            // In Options API setup(), we can use useRouter.
+            // But wait, we didn't import useRouter in this file yet. Let's redirect via window or add router.
+            // Ideally we should import useRouter.
+            window.location.href = `/admin/ledger?type=customer&id=${customer.id}`;
         };
 
         const onCustomerTypeChange = () => {

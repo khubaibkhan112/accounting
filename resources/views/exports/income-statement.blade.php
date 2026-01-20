@@ -58,8 +58,12 @@
     </style>
 </head>
 <body>
+    @php($companyName = \App\Models\Setting::get('company_name'))
     <div class="header">
         <h1>Income Statement (Profit & Loss) Report</h1>
+        @if($companyName)
+            <p>{{ $companyName }}</p>
+        @endif
         <p>Date Range: {{ $date_from ?? 'N/A' }} to {{ $date_to ?? 'N/A' }}</p>
     </div>
 

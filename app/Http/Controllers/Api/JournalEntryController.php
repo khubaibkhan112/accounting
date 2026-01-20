@@ -9,11 +9,13 @@ use App\Models\JournalEntry;
 use App\Models\JournalEntryItem;
 use App\Models\Account;
 use App\Services\AuditService;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class JournalEntryController extends Controller
 {
@@ -127,11 +129,16 @@ class JournalEntryController extends Controller
                 ], 422);
             }
 
+            $referenceNumber = $request->reference_number;
+            if (!$referenceNumber && Setting::get('auto_generate_reference', false)) {
+                $referenceNumber = $this->generateReferenceNumber('JRN');
+            }
+
             // Create journal entry
             $journalEntry = JournalEntry::create([
                 'entry_date' => $request->entry_date,
                 'description' => $request->description,
-                'reference_number' => $request->reference_number,
+                'reference_number' => $referenceNumber,
                 'total_debit' => $totalDebit,
                 'total_credit' => $totalCredit,
                 'created_by' => Auth::id(),
@@ -298,6 +305,18 @@ class JournalEntryController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function generateReferenceNumber(string $prefix): string
+    {
+        $date = now()->format('Ymd');
+        $reference = $prefix . '-' . $date . '-' . strtoupper(Str::random(6));
+
+        while (JournalEntry::where('reference_number', $reference)->exists()) {
+            $reference = $prefix . '-' . $date . '-' . strtoupper(Str::random(6));
+        }
+
+        return $reference;
     }
 
     /**

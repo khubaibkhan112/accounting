@@ -82,6 +82,12 @@ const routes = [
                 meta: { requiresRole: 'admin' },
             },
             {
+                path: 'profile',
+                name: 'admin.profile',
+                component: () => import('@/pages/admin/Profile.vue'),
+                meta: { requiresAuth: true },
+            },
+            {
                 path: 'import',
                 name: 'admin.import',
                 component: Import,
@@ -107,10 +113,10 @@ router.beforeEach(async (to, from, next) => {
                 // User is authenticated, check role if required
                 if (to.meta.requiresRole) {
                     const userRole = response.data.user.role;
-                    const requiredRoles = Array.isArray(to.meta.requiresRole) 
-                        ? to.meta.requiresRole 
+                    const requiredRoles = Array.isArray(to.meta.requiresRole)
+                        ? to.meta.requiresRole
                         : [to.meta.requiresRole];
-                    
+
                     if (!requiredRoles.includes(userRole)) {
                         // User doesn't have required role, redirect to dashboard
                         next({ name: 'admin.dashboard' });

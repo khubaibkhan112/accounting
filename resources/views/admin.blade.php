@@ -6,6 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-url" content="{{ url('/') }}">
     <title>{{ config('app.name', 'Accounting Software') }} - Admin</title>
+    <script>
+        window.__APP_SETTINGS__ = @json(\App\Models\Setting::allAsArray());
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>

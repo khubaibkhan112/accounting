@@ -10,21 +10,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
-use App\Http\Controllers\Controller;
-use App\Models\Customer;
-use App\Models\Transaction;
-use App\Traits\LedgerTrait; // Import Trait
-use App\Exports\LedgerExport; // Import Export Class
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Maatwebsite\Excel\Facades\Excel; // Import Excel
-use Barryvdh\DomPDF\Facade\Pdf; // Import PDF
+use App\Traits\LedgerTrait;
+use App\Exports\LedgerExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerController extends Controller
 {
-    use LedgerTrait; // Use Trait
+    use LedgerTrait;
+
     /**
      * Display a listing of customers.
      */
@@ -281,28 +275,16 @@ class CustomerController extends Controller
     /**
      * Get customer transactions.
      */
+    /**
+     * Get customer transactions (Ledger).
+     */
     public function transactions(Customer $customer, Request $request): JsonResponse
     {
-        $query = $customer->transactions()
-            ->with(['account', 'employee', 'creator'])
-            ->orderBy('date', 'desc')
-            ->orderBy('created_at', 'desc');
+        $data = $this->getEntityLedgerData($customer, $request, 'customer_id', 'asset');
+        return response()->json($data);
+    }
 
-        // Filter by date range
-        if ($request->has('date_from')) {
-            $query->where('date', '>=', $request->date_from);
-        }
-
-        if ($request->has('date_to')) {
-            $query->where('date', '<=', $request->date_to);
-        }
-
-        // Pagination
-        $perPage = min($request->get('per_page', 15), 100);
-        $transactions = $query->paginate($perPage);
-
-        return response()->json($transactions);
-        /**
+    /**
      * Export customer ledger to Excel.
      */
     public function exportLedgerExcel(Request $request, Customer $customer)
@@ -319,7 +301,7 @@ class CustomerController extends Controller
             'total_credit' => $data['total_credit'],
         ];
 
-        // Prepare account array for export class (mapping customer fields to account fields expected by LedgerExport)
+        // Prepare account array for export class
         $account = [
             'account_code' => $customer->customer_code,
             'account_name' => $customer->display_name,
@@ -352,7 +334,7 @@ class CustomerController extends Controller
         
         // Map data structure for the view
         $viewData = $data;
-        $viewData['account'] = [ // Mock account object for the view
+        $viewData['account'] = [
             'account_code' => $customer->customer_code,
             'account_name' => $customer->display_name,
             'opening_balance' => $data['opening_balance'],
@@ -364,7 +346,6 @@ class CustomerController extends Controller
 
         return $pdf->download($filename);
     }
-}
 
     /**
      * Generate next customer code.

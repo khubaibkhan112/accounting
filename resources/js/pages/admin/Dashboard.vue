@@ -125,6 +125,7 @@
 <script>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { formatCurrency as formatCurrencyValue } from '@/utils/settings';
 
 export default {
     name: 'Dashboard',
@@ -139,13 +140,7 @@ export default {
         const recentTransactions = ref([]);
         const loading = ref(false);
 
-        const formatCurrency = (amount) => {
-            if (amount === null || amount === undefined) return '$0.00';
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-            }).format(amount);
-        };
+        const formatCurrency = (amount) => formatCurrencyValue(amount);
 
         const formatDate = (date) => {
             if (!date) return '-';

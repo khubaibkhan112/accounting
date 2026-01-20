@@ -130,10 +130,13 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from 'vue-toastification';
+import { setSetting } from '@/utils/settings';
 
 export default {
     name: 'Settings',
     setup() {
+        const toast = useToast();
         const loading = ref(true);
         const saving = ref(false);
         const settings = reactive({
@@ -155,6 +158,7 @@ export default {
                 settingsList.forEach(setting => {
                     if (settings.hasOwnProperty(setting.key)) {
                         settings[setting.key] = setting.value;
+                        setSetting(setting.key, setting.value);
                     }
                 });
 
@@ -162,10 +166,12 @@ export default {
                 if (!settingsList.find(s => s.key === 'fiscal_year_start')) {
                     const now = new Date();
                     settings.fiscal_year_start = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    setSetting('fiscal_year_start', settings.fiscal_year_start);
                 }
                 if (!settingsList.find(s => s.key === 'fiscal_year_end')) {
                     const now = new Date();
                     settings.fiscal_year_end = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+                    setSetting('fiscal_year_end', settings.fiscal_year_end);
                 }
             } catch (error) {
                 console.error('Error loading settings:', error);
@@ -173,6 +179,8 @@ export default {
                 const now = new Date();
                 settings.fiscal_year_start = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
                 settings.fiscal_year_end = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+                setSetting('fiscal_year_start', settings.fiscal_year_start);
+                setSetting('fiscal_year_end', settings.fiscal_year_end);
             } finally {
                 loading.value = false;
             }
@@ -185,9 +193,10 @@ export default {
                     value: value,
                     type: type,
                 });
+                setSetting(key, value);
             } catch (error) {
                 console.error(`Error saving setting ${key}:`, error);
-                alert(`Failed to save ${key}. Please try again.`);
+                toast.error(`Failed to save ${key}. Please try again.`);
             }
         };
 
@@ -204,10 +213,11 @@ export default {
                     settings: settingsArray,
                 });
 
-                alert('All settings saved successfully!');
+                toast.success('All settings saved successfully!');
+                settingsArray.forEach(item => setSetting(item.key, item.value));
             } catch (error) {
                 console.error('Error saving settings:', error);
-                alert('Failed to save settings. Please try again.');
+                toast.error('Failed to save settings. Please try again.');
             } finally {
                 saving.value = false;
             }

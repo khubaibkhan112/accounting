@@ -24,10 +24,13 @@ Route::prefix('employees')->group(function () {
     Route::post('/', [EmployeeController::class, 'store']);
     Route::get('/generate-id', [EmployeeController::class, 'generateEmployeeId']);
     Route::get('/departments', [EmployeeController::class, 'getDepartments']);
+    Route::get('/{employee}/transactions', [EmployeeController::class, 'transactions']);
     Route::get('/{employee}', [EmployeeController::class, 'show']);
     Route::put('/{employee}', [EmployeeController::class, 'update']);
     Route::patch('/{employee}', [EmployeeController::class, 'update']);
     Route::delete('/{employee}', [EmployeeController::class, 'destroy']);
+    Route::get('/{employee}/ledger/export/excel', [EmployeeController::class, 'exportLedgerExcel']);
+    Route::get('/{employee}/ledger/export/pdf', [EmployeeController::class, 'exportLedgerPdf']);
 });
 
 // Account routes
@@ -57,6 +60,8 @@ Route::prefix('customers')->group(function () {
     Route::put('/{customer}', [CustomerController::class, 'update']);
     Route::patch('/{customer}', [CustomerController::class, 'update']);
     Route::delete('/{customer}', [CustomerController::class, 'destroy']);
+    Route::get('/{customer}/ledger/export/excel', [CustomerController::class, 'exportLedgerExcel']);
+    Route::get('/{customer}/ledger/export/pdf', [CustomerController::class, 'exportLedgerPdf']);
 });
 
 // Vehicle routes
@@ -138,6 +143,13 @@ Route::prefix('audit-logs')->middleware('role:admin')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\AuditLogController::class, 'index']);
     Route::get('/{auditLog}', [\App\Http\Controllers\Api\AuditLogController::class, 'show']);
     Route::get('/model/{type}/{id}', [\App\Http\Controllers\Api\AuditLogController::class, 'forModel']);
+});
+
+// Profile routes
+Route::prefix('profile')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\ProfileController::class, 'show']);
+    Route::put('/', [\App\Http\Controllers\Api\ProfileController::class, 'update']);
+    Route::put('/password', [\App\Http\Controllers\Api\ProfileController::class, 'changePassword']);
 });
 
 }); // End auth middleware group

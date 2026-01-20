@@ -371,6 +371,7 @@ import AccountTreeNode from '@/components/AccountTreeNode.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import { useNotifications } from '@/composables/useNotifications';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import { formatCurrency as formatCurrencyValue, getSetting } from '@/utils/settings';
 
 export default {
     name: 'Accounts',
@@ -424,13 +425,7 @@ export default {
 
         const formErrors = reactive({});
 
-        const formatCurrency = (amount) => {
-            if (amount === null || amount === undefined) return '$0.00';
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-            }).format(amount);
-        };
+        const formatCurrency = (amount) => formatCurrencyValue(amount);
 
         const getTypeClass = (type) => {
             const classes = {
@@ -557,7 +552,7 @@ export default {
         const resetForm = () => {
             form.account_code = '';
             form.account_name = '';
-            form.account_type = '';
+            form.account_type = getSetting('default_account_type', 'asset');
             form.parent_account_id = '';
             form.opening_balance = 0;
             form.description = '';

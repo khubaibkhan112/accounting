@@ -1,5 +1,5 @@
 <template>
-    <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" style="z-index: 9999;">
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="close"></div>
 
@@ -109,6 +109,7 @@
 import { ref, reactive, watch, onMounted } from 'vue';
 import axios from 'axios';
 import { useToast } from "vue-toastification";
+import { formatCurrency as formatCurrencyValue } from '@/utils/settings';
 
 export default {
     name: 'LedgerModal',
@@ -147,15 +148,23 @@ export default {
             loading.value = true;
             try {
                 const endpoint = props.entityType === 'customer' 
-                    ? `/api/customers/${props.entityId}/ledger`
-                    : `/api/employees/${props.entityId}/ledger`;
+                    ? `/api/customers/${props.entityId}/transactions`
+                    : `/api/employees/${props.entityId}/transactions`;
                 
                 const response = await axios.get(endpoint, { params: filters });
-                transactions.value = response.data.ledger;
-                summary.opening_balance = response.data.opening_balance;
-                summary.closing_balance = response.data.closing_balance;
-                summary.total_debit = response.data.total_debit;
-                summary.total_credit = response.data.total_credit;
+                // Check if wrapped in data (Laravel Resource) or direct (Json Response)
+                const payload = response.data.ledger ? response.data : (response.data.data && response.data.data.ledger ? response.data.data : response.data);
+                
+                if (payload && Array.isArray(payload.ledger)) {
+                    transactions.value = payload.ledger;
+                    summary.opening_balance = payload.opening_balance || 0;
+                    summary.closing_balance = payload.closing_balance || 0;
+                    summary.total_debit = payload.total_debit || 0;
+                    summary.total_credit = payload.total_credit || 0;
+                } else {
+                    console.error("Unexpected ledger response format or missing ledger array:", response.data);
+                    transactions.value = [];
+                }
             } catch (error) {
                 console.error("Failed to fetch ledger:", error);
                 toast.error("Failed to load ledger data.");
@@ -170,21 +179,35 @@ export default {
             }
         });
 
+        watch(() => props.entityId, (newId) => {
+            if (props.isOpen && newId) {
+                fetchLedger();
+            }
+        });
+
         const exportExcel = () => {
-             const endpoint = props.entityType === 'customer' 
+            const endpoint = props.entityType === 'customer'
                 ? `/api/customers/${props.entityId}/ledger/export/excel`
                 : `/api/employees/${props.entityId}/ledger/export/excel`;
-            
-            const url = `${endpoint}?date_from=${filters.date_from}&date_to=${filters.date_to}`;
+
+            const params = new URLSearchParams();
+            if (filters.date_from) params.append('date_from', filters.date_from);
+            if (filters.date_to) params.append('date_to', filters.date_to);
+
+            const url = params.toString() ? `${endpoint}?${params}` : endpoint;
             window.open(url, '_blank');
         };
 
         const exportPdf = () => {
-             const endpoint = props.entityType === 'customer' 
+            const endpoint = props.entityType === 'customer'
                 ? `/api/customers/${props.entityId}/ledger/export/pdf`
                 : `/api/employees/${props.entityId}/ledger/export/pdf`;
 
-            const url = `${endpoint}?date_from=${filters.date_from}&date_to=${filters.date_to}`;
+            const params = new URLSearchParams();
+            if (filters.date_from) params.append('date_from', filters.date_from);
+            if (filters.date_to) params.append('date_to', filters.date_to);
+
+            const url = params.toString() ? `${endpoint}?${params}` : endpoint;
             window.open(url, '_blank');
         };
 
@@ -192,9 +215,7 @@ export default {
             emit('close');
         };
 
-        const formatCurrency = (val) => {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
-        };
+        const formatCurrency = (val) => formatCurrencyValue(val);
 
         const formatDate = (dateStr) => {
             if (!dateStr) return '';

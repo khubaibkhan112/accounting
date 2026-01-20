@@ -25,7 +25,7 @@
                     <input
                         type="text"
                         v-model="filters.search"
-                        @input="loadTransactions"
+                        @input="onFiltersChanged"
                         placeholder="Description, reference, account..."
                         class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
@@ -34,7 +34,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Account</label>
                     <select
                         v-model="filters.account_id"
-                        @change="loadTransactions"
+                        @change="onFiltersChanged"
                         class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
                         <option value="">All Accounts</option>
@@ -47,7 +47,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Transaction Type</label>
                     <select
                         v-model="filters.transaction_type"
-                        @change="loadTransactions"
+                        @change="onFiltersChanged"
                         class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     >
                         <option value="">All Types</option>
@@ -63,7 +63,7 @@
                     <input
                         type="date"
                         v-model="filters.date_from"
-                        @change="loadTransactions"
+                        @change="onFiltersChanged"
                         class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                 </div>
@@ -72,7 +72,7 @@
                     <input
                         type="date"
                         v-model="filters.date_to"
-                        @change="loadTransactions"
+                        @change="onFiltersChanged"
                         class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                 </div>
@@ -299,16 +299,34 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
                                     <div class="flex gap-2">
-                                        <select
-                                            v-model="form.customer_id"
-                                            @change="onCustomerChange"
-                                            class="flex-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                        >
-                                            <option value="">None</option>
-                                            <option v-for="customer in customers" :key="customer.id" :value="customer.id">
-                                                {{ customer.customer_code }} - {{ customer.full_name || customer.company_name }}
-                                            </option>
-                                        </select>
+                                        <div class="relative flex-1">
+                                            <input
+                                                type="text"
+                                                v-model="customerSearch"
+                                                @input="onCustomerSearchInput"
+                                                @focus="customerOptionsOpen = true"
+                                                @blur="closeCustomerOptions"
+                                                placeholder="Search customer..."
+                                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                            />
+                                            <div
+                                                v-show="customerOptionsOpen"
+                                                class="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+                                            >
+                                                <button
+                                                    v-for="customer in filteredCustomers"
+                                                    :key="customer.id"
+                                                    type="button"
+                                                    class="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                                    @mousedown.prevent="selectCustomer(customer)"
+                                                >
+                                                    {{ getCustomerLabel(customer) }}
+                                                </button>
+                                                <div v-if="filteredCustomers.length === 0" class="px-3 py-2 text-sm text-gray-500">
+                                                    No customers found
+                                                </div>
+                                            </div>
+                                        </div>
                                         <button
                                             type="button"
                                             @click="openCreateCustomerModal"
@@ -326,15 +344,34 @@
                                 <div v-if="form.customer_id">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle</label>
                                     <div class="flex gap-2">
-                                        <select
-                                            v-model="form.vehicle_id"
-                                            class="flex-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                        >
-                                            <option value="">None</option>
-                                            <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
-                                                {{ vehicle.vehicle_number }} - {{ vehicle.display_name || vehicle.chassis_number }}
-                                            </option>
-                                        </select>
+                                        <div class="relative flex-1">
+                                            <input
+                                                type="text"
+                                                v-model="vehicleSearch"
+                                                @input="onVehicleSearchInput"
+                                                @focus="vehicleOptionsOpen = true"
+                                                @blur="closeVehicleOptions"
+                                                placeholder="Search vehicle..."
+                                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                            />
+                                            <div
+                                                v-show="vehicleOptionsOpen"
+                                                class="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+                                            >
+                                                <button
+                                                    v-for="vehicle in filteredVehicles"
+                                                    :key="vehicle.id"
+                                                    type="button"
+                                                    class="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                                    @mousedown.prevent="selectVehicle(vehicle)"
+                                                >
+                                                    {{ getVehicleLabel(vehicle) }}
+                                                </button>
+                                                <div v-if="filteredVehicles.length === 0" class="px-3 py-2 text-sm text-gray-500">
+                                                    No vehicles found
+                                                </div>
+                                            </div>
+                                        </div>
                                         <button
                                             type="button"
                                             @click="openCreateVehicleModal"
@@ -352,15 +389,34 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
                                     <div class="flex gap-2">
-                                        <select
-                                            v-model="form.employee_id"
-                                            class="flex-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                        >
-                                            <option value="">None</option>
-                                            <option v-for="employee in employees" :key="employee.id" :value="employee.id">
-                                                {{ employee.employee_id }} - {{ employee.full_name }}
-                                            </option>
-                                        </select>
+                                        <div class="relative flex-1">
+                                            <input
+                                                type="text"
+                                                v-model="employeeSearch"
+                                                @input="onEmployeeSearchInput"
+                                                @focus="employeeOptionsOpen = true"
+                                                @blur="closeEmployeeOptions"
+                                                placeholder="Search employee..."
+                                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                            />
+                                            <div
+                                                v-show="employeeOptionsOpen"
+                                                class="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+                                            >
+                                                <button
+                                                    v-for="employee in filteredEmployees"
+                                                    :key="employee.id"
+                                                    type="button"
+                                                    class="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                                    @mousedown.prevent="selectEmployee(employee)"
+                                                >
+                                                    {{ getEmployeeLabel(employee) }}
+                                                </button>
+                                                <div v-if="filteredEmployees.length === 0" class="px-3 py-2 text-sm text-gray-500">
+                                                    No employees found
+                                                </div>
+                                            </div>
+                                        </div>
                                         <button
                                             type="button"
                                             @click="openCreateEmployeeModal"
@@ -430,8 +486,11 @@
                                     <input
                                         type="text"
                                         v-model="form.reference_number"
+                                        :disabled="autoGenerateReference && !editingTransaction"
+                                        :placeholder="autoGenerateReference && !editingTransaction ? 'Auto-generated' : ''"
                                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                     />
+                                    <p v-if="autoGenerateReference && !editingTransaction" class="mt-1 text-xs text-gray-500">Reference number will be generated automatically.</p>
                                 </div>
 
                                 <!-- Transaction Type -->
@@ -813,9 +872,10 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { validateForm, hasErrors, clearError, validators } from '@/utils/validation';
+import { formatCurrency as formatCurrencyValue, getSetting } from '@/utils/settings';
 
 export default {
     name: 'Transactions',
@@ -845,6 +905,7 @@ export default {
             transaction_type: '',
             date_from: '',
             date_to: '',
+            page: 1,
         });
 
         const datePresets = [
@@ -879,6 +940,8 @@ export default {
             }},
         ];
 
+        const autoGenerateReference = ref(getSetting('auto_generate_reference', false));
+
         const form = reactive({
             date: new Date().toISOString().split('T')[0],
             account_id: '',
@@ -892,13 +955,142 @@ export default {
             transaction_type: '',
         });
 
-        const formatCurrency = (amount) => {
-            if (amount === null || amount === undefined) return '$0.00';
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-            }).format(amount);
+        const getCustomerLabel = (customer) => {
+            if (!customer) return '';
+            const name = customer.company_name || customer.full_name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+            return `${customer.customer_code || ''}${name ? ' - ' + name : ''}`.trim();
         };
+
+        const getEmployeeLabel = (employee) => {
+            if (!employee) return '';
+            const name = employee.full_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
+            return `${employee.employee_id || ''}${name ? ' - ' + name : ''}`.trim();
+        };
+
+        const getVehicleLabel = (vehicle) => {
+            if (!vehicle) return '';
+            const details = vehicle.display_name || vehicle.chassis_number || '';
+            return `${vehicle.vehicle_number || ''}${details ? ' - ' + details : ''}`.trim();
+        };
+
+        const customerSearch = ref('');
+        const employeeSearch = ref('');
+        const vehicleSearch = ref('');
+        const customerOptionsOpen = ref(false);
+        const employeeOptionsOpen = ref(false);
+        const vehicleOptionsOpen = ref(false);
+
+        const filteredCustomers = computed(() => {
+            const term = customerSearch.value.trim().toLowerCase();
+            if (!term) return customers.value;
+            return customers.value.filter((customer) => getCustomerLabel(customer).toLowerCase().includes(term));
+        });
+
+        const filteredEmployees = computed(() => {
+            const term = employeeSearch.value.trim().toLowerCase();
+            if (!term) return employees.value;
+            return employees.value.filter((employee) => getEmployeeLabel(employee).toLowerCase().includes(term));
+        });
+
+        const filteredVehicles = computed(() => {
+            const term = vehicleSearch.value.trim().toLowerCase();
+            if (!term) return vehicles.value;
+            return vehicles.value.filter((vehicle) => getVehicleLabel(vehicle).toLowerCase().includes(term));
+        });
+
+        const closeCustomerOptions = () => {
+            setTimeout(() => {
+                customerOptionsOpen.value = false;
+            }, 150);
+        };
+
+        const closeEmployeeOptions = () => {
+            setTimeout(() => {
+                employeeOptionsOpen.value = false;
+            }, 150);
+        };
+
+        const closeVehicleOptions = () => {
+            setTimeout(() => {
+                vehicleOptionsOpen.value = false;
+            }, 150);
+        };
+
+        const syncCustomerSearch = () => {
+            if (!form.customer_id) return;
+            const customer = customers.value.find(item => item.id === form.customer_id);
+            if (customer) {
+                customerSearch.value = getCustomerLabel(customer);
+            }
+        };
+
+        const syncEmployeeSearch = () => {
+            if (!form.employee_id) return;
+            const employee = employees.value.find(item => item.id === form.employee_id);
+            if (employee) {
+                employeeSearch.value = getEmployeeLabel(employee);
+            }
+        };
+
+        const syncVehicleSearch = () => {
+            if (!form.vehicle_id) return;
+            const vehicle = vehicles.value.find(item => item.id === form.vehicle_id);
+            if (vehicle) {
+                vehicleSearch.value = getVehicleLabel(vehicle);
+            }
+        };
+
+        const selectCustomer = (customer) => {
+            form.customer_id = customer.id;
+            customerSearch.value = getCustomerLabel(customer);
+            customerOptionsOpen.value = false;
+            onCustomerChange();
+        };
+
+        const selectEmployee = (employee) => {
+            form.employee_id = employee.id;
+            employeeSearch.value = getEmployeeLabel(employee);
+            employeeOptionsOpen.value = false;
+        };
+
+        const selectVehicle = (vehicle) => {
+            form.vehicle_id = vehicle.id;
+            vehicleSearch.value = getVehicleLabel(vehicle);
+            vehicleOptionsOpen.value = false;
+        };
+
+        const onCustomerSearchInput = () => {
+            customerOptionsOpen.value = true;
+            if (form.customer_id) {
+                const customer = customers.value.find(item => item.id === form.customer_id);
+                if (customer && customerSearch.value !== getCustomerLabel(customer)) {
+                    form.customer_id = '';
+                    onCustomerChange();
+                }
+            }
+        };
+
+        const onEmployeeSearchInput = () => {
+            employeeOptionsOpen.value = true;
+            if (form.employee_id) {
+                const employee = employees.value.find(item => item.id === form.employee_id);
+                if (employee && employeeSearch.value !== getEmployeeLabel(employee)) {
+                    form.employee_id = '';
+                }
+            }
+        };
+
+        const onVehicleSearchInput = () => {
+            vehicleOptionsOpen.value = true;
+            if (form.vehicle_id) {
+                const vehicle = vehicles.value.find(item => item.id === form.vehicle_id);
+                if (vehicle && vehicleSearch.value !== getVehicleLabel(vehicle)) {
+                    form.vehicle_id = '';
+                }
+            }
+        };
+
+        const formatCurrency = (amount) => formatCurrencyValue(amount);
 
         const formatDate = (date) => {
             if (!date) return '-';
@@ -969,11 +1161,16 @@ export default {
             return 'text-gray-500';
         };
 
+        const onFiltersChanged = () => {
+            filters.page = 1;
+            loadTransactions();
+        };
+
         const applyDatePreset = (preset) => {
             const dates = preset.getDates();
             filters.date_from = dates.from;
             filters.date_to = dates.to;
-            loadTransactions();
+            onFiltersChanged();
         };
 
         const clearFilters = () => {
@@ -982,7 +1179,7 @@ export default {
             filters.transaction_type = '';
             filters.date_from = '';
             filters.date_to = '';
-            loadTransactions();
+            onFiltersChanged();
         };
 
         const loadTransactions = async () => {
@@ -994,6 +1191,7 @@ export default {
                 if (filters.date_from) params.append('date_from', filters.date_from);
                 if (filters.date_to) params.append('date_to', filters.date_to);
                 params.append('per_page', 15);
+                params.append('page', filters.page || 1);
 
                 const response = await axios.get(`/api/transactions?${params}`);
                 transactions.value = response.data;
@@ -1025,6 +1223,7 @@ export default {
 
                 const response = await axios.get(`/api/customers?${params}`);
                 customers.value = response.data.data || [];
+                syncCustomerSearch();
             } catch (error) {
                 console.error('Error loading customers:', error);
                 customers.value = [];
@@ -1039,6 +1238,7 @@ export default {
             try {
                 const response = await axios.get(`/api/vehicles/customer/${customerId}`);
                 vehicles.value = response.data.data || [];
+                syncVehicleSearch();
             } catch (error) {
                 console.error('Error loading vehicles:', error);
                 vehicles.value = [];
@@ -1047,6 +1247,8 @@ export default {
 
         const onCustomerChange = () => {
             form.vehicle_id = ''; // Reset vehicle when customer changes
+            vehicleSearch.value = '';
+            vehicleOptionsOpen.value = false;
             if (form.customer_id) {
                 loadVehicles(form.customer_id);
             } else {
@@ -1062,6 +1264,7 @@ export default {
 
                 const response = await axios.get(`/api/employees?${params}`);
                 employees.value = response.data.data || [];
+                syncEmployeeSearch();
             } catch (error) {
                 console.error('Error loading employees:', error);
                 employees.value = [];
@@ -1122,6 +1325,12 @@ export default {
             form.transaction_type = '';
             selectedAccount.value = null;
             projectedBalance.value = null;
+            customerSearch.value = '';
+            employeeSearch.value = '';
+            vehicleSearch.value = '';
+            customerOptionsOpen.value = false;
+            employeeOptionsOpen.value = false;
+            vehicleOptionsOpen.value = false;
         };
 
         const closeModal = () => {
@@ -1448,7 +1657,7 @@ export default {
             try {
                 const response = await axios.post('/api/vehicles', vehicleForm);
                 alert('Vehicle created successfully');
-                form.vehicle_id = response.data.vehicle.id;
+                form.vehicle_id = response.data.data.id;
                 closeVehicleModal();
                 // Reload vehicles for the selected customer
                 if (form.customer_id) {
@@ -1485,7 +1694,9 @@ export default {
             datePresets,
             applyDatePreset,
             clearFilters,
+            onFiltersChanged,
             form,
+            autoGenerateReference,
             showModal,
             editingTransaction,
             loading,
@@ -1523,6 +1734,27 @@ export default {
             saveVehicleInline,
             onCustomerChange,
             loadVehicles,
+            customerSearch,
+            employeeSearch,
+            vehicleSearch,
+            customerOptionsOpen,
+            employeeOptionsOpen,
+            vehicleOptionsOpen,
+            filteredCustomers,
+            filteredEmployees,
+            filteredVehicles,
+            getCustomerLabel,
+            getEmployeeLabel,
+            getVehicleLabel,
+            selectCustomer,
+            selectEmployee,
+            selectVehicle,
+            onCustomerSearchInput,
+            onEmployeeSearchInput,
+            onVehicleSearchInput,
+            closeCustomerOptions,
+            closeEmployeeOptions,
+            closeVehicleOptions,
             formErrors,
             clearError,
             tableExpanded,
