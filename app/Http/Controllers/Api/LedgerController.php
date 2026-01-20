@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
-use App\Models\Transaction;
+use App\Models\JournalEntryItem;
 use App\Exports\LedgerExport;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -27,62 +27,69 @@ class LedgerController extends Controller
      */
     public function show(Account $account, Request $request): JsonResponse
     {
-        // Build query for transactions
-        $query = Transaction::select([
-            'id',
-            'date',
-            'account_id',
-            'description',
-            'debit_amount',
-            'credit_amount',
-            'reference_number',
-            'running_balance',
-            'created_at',
-        ])->where('account_id', $account->id)
-          ->with([
-              'account:id,account_code,account_name,account_type,opening_balance',
-          ]);
+        // Build query for journal entry items
+        $query = JournalEntryItem::query()
+            ->select([
+                'journal_entry_items.id',
+                'journal_entry_items.account_id',
+                'journal_entry_items.description',
+                'journal_entry_items.debit_amount',
+                'journal_entry_items.credit_amount',
+                'journal_entry_items.created_at',
+                'journal_entries.entry_date as entry_date',
+                'journal_entries.reference_number as reference_number',
+                'journal_entries.description as entry_description',
+            ])
+            ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_items.journal_entry_id')
+            ->where('journal_entry_items.account_id', $account->id);
 
         // Filter by date range
         if ($request->has('date_from') && $request->date_from) {
-            $query->where('date', '>=', $request->date_from);
+            $query->where('journal_entries.entry_date', '>=', $request->date_from);
         }
 
         if ($request->has('date_to') && $request->date_to) {
-            $query->where('date', '<=', $request->date_to);
+            $query->where('journal_entries.entry_date', '<=', $request->date_to);
         }
 
         // Search functionality
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('reference_number', 'like', "%{$search}%");
+                $q->where('journal_entry_items.description', 'like', "%{$search}%")
+                  ->orWhere('journal_entries.description', 'like', "%{$search}%")
+                  ->orWhere('journal_entries.reference_number', 'like', "%{$search}%");
             });
         }
 
         // Sorting - default by date asc, then id asc (chronological order for ledger)
         $sortBy = $request->get('sort_by', 'date');
         $sortOrder = $request->get('sort_order', 'asc');
-        $validSortFields = ['date', 'debit_amount', 'credit_amount', 'reference_number', 'created_at'];
+        $validSortFields = ['entry_date', 'debit_amount', 'credit_amount', 'reference_number', 'created_at'];
         
         if (in_array($sortBy, $validSortFields)) {
-            $query->orderBy($sortBy, $sortOrder);
+            if ($sortBy === 'entry_date') {
+                $query->orderBy('journal_entries.entry_date', $sortOrder);
+            } elseif ($sortBy === 'reference_number') {
+                $query->orderBy('journal_entries.reference_number', $sortOrder);
+            } else {
+                $query->orderBy("journal_entry_items.$sortBy", $sortOrder);
+            }
         }
         
         // Secondary sort by id to ensure consistent ordering
         if ($sortBy !== 'id') {
-            $query->orderBy('id', 'asc');
+            $query->orderBy('journal_entry_items.id', 'asc');
         }
 
         // Get transactions
-        $transactions = $query->get();
+        $items = $query->get();
 
         // Calculate opening balance
         $openingBalance = (float) $account->opening_balance;
         
         // Get opening balance date (earliest transaction date or date_from)
-        $dateFrom = $request->date_from ?? ($transactions->min('date') ? $transactions->min('date')->format('Y-m-d') : null);
+        $dateFrom = $request->date_from ?? ($items->min('entry_date') ? $items->min('entry_date') : null);
         
         // If date_from is specified, calculate opening balance up to that date
         if ($dateFrom) {
@@ -94,7 +101,7 @@ class LedgerController extends Controller
         $runningBalance = $openingBalance;
 
         // Add opening balance entry if there are transactions
-        if ($transactions->isNotEmpty() || $openingBalance != 0) {
+        if ($items->isNotEmpty() || $openingBalance != 0) {
             $ledgerData[] = [
                 'id' => null,
                 'date' => $dateFrom ?? $account->created_at->format('Y-m-d'),
@@ -108,26 +115,28 @@ class LedgerController extends Controller
         }
 
         // Add transactions with running balance
-        foreach ($transactions as $transaction) {
-            // Calculate running balance
-            $runningBalance = (float) $transaction->running_balance;
+        foreach ($items as $item) {
+            $debit = (float) $item->debit_amount;
+            $credit = (float) $item->credit_amount;
+            $description = $item->description ?: $item->entry_description;
+            $runningBalance = $this->adjustBalance($runningBalance, $account->account_type, $debit, $credit);
             
             $ledgerData[] = [
-                'id' => $transaction->id,
-                'date' => $transaction->date->format('Y-m-d'),
-                'description' => $transaction->description,
-                'reference_number' => $transaction->reference_number,
-                'debit_amount' => (float) $transaction->debit_amount,
-                'credit_amount' => (float) $transaction->credit_amount,
+                'id' => $item->id,
+                'date' => $item->entry_date,
+                'description' => $description,
+                'reference_number' => $item->reference_number,
+                'debit_amount' => $debit,
+                'credit_amount' => $credit,
                 'balance' => $runningBalance,
-                'type' => 'transaction',
-                'created_at' => $transaction->created_at->format('Y-m-d H:i:s'),
+                'type' => 'journal',
+                'created_at' => $item->created_at->format('Y-m-d H:i:s'),
             ];
         }
 
         // Calculate totals
-        $totalDebit = $transactions->sum('debit_amount');
-        $totalCredit = $transactions->sum('credit_amount');
+        $totalDebit = $items->sum('debit_amount');
+        $totalCredit = $items->sum('credit_amount');
 
         // Prepare response
         $response = [
@@ -145,7 +154,7 @@ class LedgerController extends Controller
             'closing_balance' => $runningBalance,
             'total_debit' => (float) $totalDebit,
             'total_credit' => (float) $totalCredit,
-            'transactions_count' => $transactions->count(),
+            'transactions_count' => $items->count(),
             'ledger' => $ledgerData,
         ];
 
@@ -164,17 +173,19 @@ class LedgerController extends Controller
 
         $openingBalance = (float) $account->opening_balance;
 
-        // Get all transactions before the date
-        $previousTransactions = Transaction::where('account_id', $accountId)
-            ->where('date', '<', $date)
-            ->orderBy('date', 'asc')
-            ->orderBy('id', 'asc')
-            ->get();
+        // Get all journal entry items before the date
+        $previousItems = JournalEntryItem::query()
+            ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_items.journal_entry_id')
+            ->where('journal_entry_items.account_id', $accountId)
+            ->where('journal_entries.entry_date', '<', $date)
+            ->orderBy('journal_entries.entry_date', 'asc')
+            ->orderBy('journal_entry_items.id', 'asc')
+            ->get(['journal_entry_items.debit_amount', 'journal_entry_items.credit_amount']);
 
         // Calculate balance up to the date
         $balance = $openingBalance;
-        foreach ($previousTransactions as $transaction) {
-            $balance = $this->adjustBalance($balance, $account->account_type, $transaction->debit_amount, $transaction->credit_amount);
+        foreach ($previousItems as $item) {
+            $balance = $this->adjustBalance($balance, $account->account_type, (float) $item->debit_amount, (float) $item->credit_amount);
         }
 
         return $balance;
@@ -266,60 +277,67 @@ class LedgerController extends Controller
             ], 404);
         }
 
-        // Build query for transactions
-        $query = Transaction::select([
-            'id',
-            'date',
-            'account_id',
-            'description',
-            'debit_amount',
-            'credit_amount',
-            'reference_number',
-            'running_balance',
-            'created_at',
-        ])->where('account_id', $accountId)
-          ->with([
-              'account:id,account_code,account_name,account_type,opening_balance',
-          ]);
+        // Build query for journal entry items
+        $query = JournalEntryItem::query()
+            ->select([
+                'journal_entry_items.id',
+                'journal_entry_items.account_id',
+                'journal_entry_items.description',
+                'journal_entry_items.debit_amount',
+                'journal_entry_items.credit_amount',
+                'journal_entry_items.created_at',
+                'journal_entries.entry_date as entry_date',
+                'journal_entries.reference_number as reference_number',
+                'journal_entries.description as entry_description',
+            ])
+            ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_items.journal_entry_id')
+            ->where('journal_entry_items.account_id', $accountId);
 
         // Filter by date range
         if ($request->has('date_from') && $request->date_from) {
-            $query->where('date', '>=', $request->date_from);
+            $query->where('journal_entries.entry_date', '>=', $request->date_from);
         }
 
         if ($request->has('date_to') && $request->date_to) {
-            $query->where('date', '<=', $request->date_to);
+            $query->where('journal_entries.entry_date', '<=', $request->date_to);
         }
 
         // Search functionality
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('reference_number', 'like', "%{$search}%");
+                $q->where('journal_entry_items.description', 'like', "%{$search}%")
+                  ->orWhere('journal_entries.description', 'like', "%{$search}%")
+                  ->orWhere('journal_entries.reference_number', 'like', "%{$search}%");
             });
         }
 
         // Sorting
         $sortBy = $request->get('sort_by', 'date');
         $sortOrder = $request->get('sort_order', 'asc');
-        $validSortFields = ['date', 'debit_amount', 'credit_amount', 'reference_number', 'created_at'];
+        $validSortFields = ['entry_date', 'debit_amount', 'credit_amount', 'reference_number', 'created_at'];
         
         if (in_array($sortBy, $validSortFields)) {
-            $query->orderBy($sortBy, $sortOrder);
+            if ($sortBy === 'entry_date') {
+                $query->orderBy('journal_entries.entry_date', $sortOrder);
+            } elseif ($sortBy === 'reference_number') {
+                $query->orderBy('journal_entries.reference_number', $sortOrder);
+            } else {
+                $query->orderBy("journal_entry_items.$sortBy", $sortOrder);
+            }
         }
         
         if ($sortBy !== 'id') {
-            $query->orderBy('id', 'asc');
+            $query->orderBy('journal_entry_items.id', 'asc');
         }
 
         // Get transactions
-        $transactions = $query->get();
+        $items = $query->get();
 
         // Calculate opening balance
         $openingBalance = (float) $account->opening_balance;
         
-        $dateFrom = $request->date_from ?? ($transactions->min('date') ? $transactions->min('date')->format('Y-m-d') : null);
+        $dateFrom = $request->date_from ?? ($items->min('entry_date') ? $items->min('entry_date') : null);
         
         if ($dateFrom) {
             $openingBalance = $this->calculateOpeningBalanceUpToDate($accountId, $dateFrom);
@@ -329,7 +347,7 @@ class LedgerController extends Controller
         $ledgerData = [];
         $runningBalance = $openingBalance;
 
-        if ($transactions->isNotEmpty() || $openingBalance != 0) {
+        if ($items->isNotEmpty() || $openingBalance != 0) {
             $ledgerData[] = [
                 'id' => null,
                 'date' => $dateFrom ?? $account->created_at->format('Y-m-d'),
@@ -342,25 +360,28 @@ class LedgerController extends Controller
             ];
         }
 
-        foreach ($transactions as $transaction) {
-            $runningBalance = (float) $transaction->running_balance;
+        foreach ($items as $item) {
+            $debit = (float) $item->debit_amount;
+            $credit = (float) $item->credit_amount;
+            $description = $item->description ?: $item->entry_description;
+            $runningBalance = $this->adjustBalance($runningBalance, $account->account_type, $debit, $credit);
             
             $ledgerData[] = [
-                'id' => $transaction->id,
-                'date' => $transaction->date->format('Y-m-d'),
-                'description' => $transaction->description,
-                'reference_number' => $transaction->reference_number,
-                'debit_amount' => (float) $transaction->debit_amount,
-                'credit_amount' => (float) $transaction->credit_amount,
+                'id' => $item->id,
+                'date' => $item->entry_date,
+                'description' => $description,
+                'reference_number' => $item->reference_number,
+                'debit_amount' => $debit,
+                'credit_amount' => $credit,
                 'balance' => $runningBalance,
-                'type' => 'transaction',
-                'created_at' => $transaction->created_at->format('Y-m-d H:i:s'),
+                'type' => 'journal',
+                'created_at' => $item->created_at->format('Y-m-d H:i:s'),
             ];
         }
 
         // Calculate totals
-        $totalDebit = $transactions->sum('debit_amount');
-        $totalCredit = $transactions->sum('credit_amount');
+        $totalDebit = $items->sum('debit_amount');
+        $totalCredit = $items->sum('credit_amount');
 
         // Prepare response
         $response = [
@@ -378,7 +399,7 @@ class LedgerController extends Controller
             'closing_balance' => $runningBalance,
             'total_debit' => (float) $totalDebit,
             'total_credit' => (float) $totalCredit,
-            'transactions_count' => $transactions->count(),
+            'transactions_count' => $items->count(),
             'ledger' => $ledgerData,
         ];
 

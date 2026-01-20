@@ -57,8 +57,20 @@
                         v-if="userMenuOpen"
                         class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 border border-gray-200"
                     >
-                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
-                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
+                        <router-link
+                            to="/admin/profile"
+                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            @click="userMenuOpen = false"
+                        >
+                            Profile
+                        </router-link>
+                        <router-link
+                            to="/admin/settings"
+                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            @click="userMenuOpen = false"
+                        >
+                            Settings
+                        </router-link>
                         <hr class="my-1 border-gray-200">
                         <a href="#" @click.prevent="logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
                     </div>

@@ -29,6 +29,9 @@ class JournalEntryController extends Controller
             'entry_date',
             'description',
             'reference_number',
+            'customer_id',
+            'employee_id',
+            'transaction_id',
             'total_debit',
             'total_credit',
             'created_by',
@@ -36,6 +39,9 @@ class JournalEntryController extends Controller
             'updated_at',
         ])->with([
             'creator:id,name,email',
+            'customer:id,customer_code,company_name,first_name,last_name',
+            'employee:id,employee_id,first_name,last_name',
+            'transaction:id,reference_number,date,account_id,description',
             'items:id,journal_entry_id,account_id,debit_amount,credit_amount,description',
             'items.account:id,account_code,account_name,account_type',
         ]);
@@ -139,6 +145,9 @@ class JournalEntryController extends Controller
                 'entry_date' => $request->entry_date,
                 'description' => $request->description,
                 'reference_number' => $referenceNumber,
+                'customer_id' => $request->customer_id,
+                'employee_id' => $request->employee_id,
+                'transaction_id' => $request->transaction_id,
                 'total_debit' => $totalDebit,
                 'total_credit' => $totalCredit,
                 'created_by' => Auth::id(),
@@ -157,6 +166,9 @@ class JournalEntryController extends Controller
 
             $journalEntry->load([
                 'creator:id,name,email',
+                'customer:id,customer_code,company_name,first_name,last_name',
+                'employee:id,employee_id,first_name,last_name',
+                'transaction:id,reference_number,date,account_id,description',
                 'items:id,journal_entry_id,account_id,debit_amount,credit_amount,description',
                 'items.account:id,account_code,account_name,account_type',
             ]);
@@ -197,6 +209,9 @@ class JournalEntryController extends Controller
     {
         $journalEntry->load([
             'creator:id,name,email',
+            'customer:id,customer_code,company_name,first_name,last_name',
+            'employee:id,employee_id,first_name,last_name',
+            'transaction:id,reference_number,date,account_id,description',
             'items:id,journal_entry_id,account_id,debit_amount,credit_amount,description',
             'items.account:id,account_code,account_name,account_type,opening_balance',
         ]);
@@ -221,6 +236,9 @@ class JournalEntryController extends Controller
             if ($request->has('entry_date')) $updateData['entry_date'] = $request->entry_date;
             if ($request->has('description')) $updateData['description'] = $request->description;
             if ($request->has('reference_number')) $updateData['reference_number'] = $request->reference_number;
+            if ($request->has('customer_id')) $updateData['customer_id'] = $request->customer_id;
+            if ($request->has('employee_id')) $updateData['employee_id'] = $request->employee_id;
+            if ($request->has('transaction_id')) $updateData['transaction_id'] = $request->transaction_id;
 
             // If items are being updated, recalculate totals
             if ($request->has('items')) {
@@ -276,6 +294,9 @@ class JournalEntryController extends Controller
 
             $journalEntry->refresh()->load([
                 'creator:id,name,email',
+                'customer:id,customer_code,company_name,first_name,last_name',
+                'employee:id,employee_id,first_name,last_name',
+                'transaction:id,reference_number,date,account_id,description',
                 'items:id,journal_entry_id,account_id,debit_amount,credit_amount,description',
                 'items.account:id,account_code,account_name,account_type',
             ]);

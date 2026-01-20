@@ -149,7 +149,11 @@
                             <td class="px-6 py-4 text-sm text-gray-900">{{ transaction.description }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <span v-if="transaction.customer">
-                                    {{ transaction.customer.company_name || transaction.customer.full_name || '-' }}
+                                    {{
+                                        transaction.customer.company_name
+                                            || [transaction.customer.first_name, transaction.customer.last_name].filter(Boolean).join(' ')
+                                            || '-'
+                                    }}
                                 </span>
                                 <span v-else class="text-gray-400">-</span>
                             </td>

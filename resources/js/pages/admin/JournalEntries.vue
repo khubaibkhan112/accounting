@@ -227,6 +227,43 @@
                                 </div>
                             </div>
 
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                                    <select
+                                        v-model="form.customer_id"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    >
+                                        <option value="">None</option>
+                                        <option v-for="customer in customers" :key="customer.id" :value="customer.id">
+                                            {{ customer.customer_code }} - {{ customer.display_name || customer.company_name || customer.first_name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                                    <select
+                                        v-model="form.employee_id"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    >
+                                        <option value="">None</option>
+                                        <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                                            {{ employee.employee_id }} - {{ employee.full_name || `${employee.first_name} ${employee.last_name}` }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Transaction ID (Optional)</label>
+                                    <input
+                                        type="number"
+                                        v-model="form.transaction_id"
+                                        min="1"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        placeholder="Enter transaction ID"
+                                    />
+                                </div>
+                            </div>
+
                             <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Description *</label>
                                 <textarea
@@ -463,6 +500,22 @@
                                     <div class="text-sm font-medium text-gray-500">Reference Number</div>
                                     <div class="text-sm text-gray-900">{{ viewingEntry.reference_number || '-' }}</div>
                                 </div>
+                                <div>
+                                    <div class="text-sm font-medium text-gray-500">Transaction ID</div>
+                                    <div class="text-sm text-gray-900">{{ viewingEntry.transaction_id || '-' }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-medium text-gray-500">Customer</div>
+                                    <div class="text-sm text-gray-900">
+                                        {{ viewingEntry.customer ? `${viewingEntry.customer.customer_code} - ${viewingEntry.customer.display_name || viewingEntry.customer.company_name || viewingEntry.customer.first_name}` : '-' }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-medium text-gray-500">Employee</div>
+                                    <div class="text-sm text-gray-900">
+                                        {{ viewingEntry.employee ? `${viewingEntry.employee.employee_id} - ${viewingEntry.employee.full_name || `${viewingEntry.employee.first_name} ${viewingEntry.employee.last_name}`}` : '-' }}
+                                    </div>
+                                </div>
                                 <div class="col-span-2">
                                     <div class="text-sm font-medium text-gray-500">Description</div>
                                     <div class="text-sm text-gray-900">{{ viewingEntry.description }}</div>
@@ -557,6 +610,8 @@ export default {
     setup() {
         const journalEntries = ref({ data: [], from: 0, to: 0, total: 0, current_page: 1, last_page: 1 });
         const accounts = ref([]);
+        const customers = ref([]);
+        const employees = ref([]);
         const tableExpanded = ref(true); // Table toggle state
         const showModal = ref(false);
         const showViewModal = ref(false);
@@ -578,6 +633,9 @@ export default {
             entry_date: new Date().toISOString().split('T')[0],
             description: '',
             reference_number: '',
+            customer_id: '',
+            employee_id: '',
+            transaction_id: '',
             items: [
                 { account_id: '', debit_amount: 0, credit_amount: 0, description: '' },
                 { account_id: '', debit_amount: 0, credit_amount: 0, description: '' },
@@ -712,10 +770,40 @@ export default {
             }
         };
 
+        const loadCustomers = async () => {
+            try {
+                const params = new URLSearchParams();
+                params.append('is_active', 'true');
+                params.append('per_page', 1000);
+
+                const response = await axios.get(`/api/customers?${params}`);
+                customers.value = response.data.data || [];
+            } catch (error) {
+                console.error('Error loading customers:', error);
+                customers.value = [];
+            }
+        };
+
+        const loadEmployees = async () => {
+            try {
+                const params = new URLSearchParams();
+                params.append('is_active', 'true');
+                params.append('per_page', 1000);
+
+                const response = await axios.get(`/api/employees?${params}`);
+                employees.value = response.data.data || [];
+            } catch (error) {
+                console.error('Error loading employees:', error);
+                employees.value = [];
+            }
+        };
+
         const openCreateModal = () => {
             editingEntry.value = null;
             resetForm();
             loadAccounts();
+            loadCustomers();
+            loadEmployees();
             showModal.value = true;
         };
 
@@ -728,6 +816,9 @@ export default {
                 form.entry_date = entryData.entry_date;
                 form.description = entryData.description;
                 form.reference_number = entryData.reference_number || '';
+                form.customer_id = entryData.customer_id || '';
+                form.employee_id = entryData.employee_id || '';
+                form.transaction_id = entryData.transaction_id || '';
                 form.items = entryData.items.map(item => ({
                     account_id: item.account_id,
                     debit_amount: parseFloat(item.debit_amount) || 0,
@@ -736,6 +827,8 @@ export default {
                 }));
 
                 loadAccounts();
+                loadCustomers();
+                loadEmployees();
                 showModal.value = true;
             } catch (error) {
                 console.error('Error loading journal entry:', error);
@@ -758,6 +851,9 @@ export default {
             form.entry_date = new Date().toISOString().split('T')[0];
             form.description = '';
             form.reference_number = '';
+            form.customer_id = '';
+            form.employee_id = '';
+            form.transaction_id = '';
             form.items = [
                 { account_id: '', debit_amount: 0, credit_amount: 0, description: '' },
                 { account_id: '', debit_amount: 0, credit_amount: 0, description: '' },
@@ -913,6 +1009,8 @@ export default {
         return {
             journalEntries,
             accounts,
+            customers,
+            employees,
             filters,
             form,
             autoGenerateReference,

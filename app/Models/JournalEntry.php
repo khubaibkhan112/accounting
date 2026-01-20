@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Customer;
+use App\Models\Employee;
+use App\Models\Transaction;
 
 class JournalEntry extends Model
 {
@@ -20,6 +23,9 @@ class JournalEntry extends Model
         'entry_date',
         'description',
         'reference_number',
+        'customer_id',
+        'employee_id',
+        'transaction_id',
         'total_debit',
         'total_credit',
         'created_by',
@@ -45,6 +51,21 @@ class JournalEntry extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
+    }
+
+    public function transaction(): BelongsTo
+    {
+        return $this->belongsTo(Transaction::class);
     }
 
     /**
