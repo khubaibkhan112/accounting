@@ -82,94 +82,109 @@
                     <span>{{ tableExpanded ? 'Collapse' : 'Expand' }}</span>
                 </button>
             </div>
-            <div v-show="tableExpanded">
-                <vxe-table
-                    v-if="employees && Array.isArray(employees.data)"
-                    :data="employeesData"
-                    :loading="tableLoading"
-                    stripe
-                    border
-                    highlight-hover-row
-                    height="600"
-                    :scroll-y="{ enabled: true, gt: 0 }"
-                    :sort-config="{ trigger: 'default', remote: true }"
-                    :pager-config="{
-                        enabled: true,
-                        currentPage: employees.current_page,
-                        pageSize: 15,
-                        total: employees.total,
-                        pageSizes: [10, 15, 20, 50, 100],
-                        layouts: ['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'FullJump', 'Total']
-                    }"
-                    :key="`table-${employees.total}-${employees.current_page}`"
-                    @page-change="handlePageChange"
-                    @sort-change="handleSortChange"
-                >
-                    <vxe-column type="expand" width="60">
-                        <template #content="{ row }">
-                            <div class="p-4 flex gap-4 bg-gray-50">
-                                <button 
-                                    @click="editEmployee(row)" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-indigo-600 rounded-md text-indigo-600 hover:bg-indigo-50 text-sm font-medium"
-                                >
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Edit
-                                </button>
-                                    <button 
-                                    @click="openLedger(row)" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-green-600 rounded-md text-green-600 hover:bg-green-50 text-sm font-medium"
-                                >
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    Ledger
-                                </button>
-                                <button 
-                                    @click="deleteEmployee(row)" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-red-600 rounded-md text-red-600 hover:bg-red-50 text-sm font-medium"
-                                >
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    Deactivate
-                                </button>
-                            </div>
-                        </template>
-                    </vxe-column>
-                    <vxe-column field="employee_id" title="Employee ID" sortable width="150"></vxe-column>
-                    <vxe-column field="full_name" title="Name" sortable min-width="200"></vxe-column>
-                    <vxe-column field="position" title="Position" sortable width="150"></vxe-column>
-                    <vxe-column field="department" title="Department" sortable width="150"></vxe-column>
-                    <vxe-column field="email" title="Email" sortable width="200"></vxe-column>
-                    <vxe-column field="employment_type" title="Employment Type" sortable width="150">
-                        <template #default="slotProps">
-                            <span v-if="slotProps && slotProps.row" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                {{ slotProps.row?.employment_type }}
-                            </span>
-                        </template>
-                    </vxe-column>
-                    <vxe-column field="user_id" title="Login Access" sortable width="120">
-                        <template #default="slotProps">
-                            <span v-if="slotProps && slotProps.row">
-                                <span v-if="slotProps.row.user_id" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+            <div v-show="tableExpanded" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th @click="changeSort('employee_id')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Employee ID</th>
+                            <th @click="changeSort('last_name')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Name</th>
+                            <th @click="changeSort('position')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Position</th>
+                            <th @click="changeSort('department')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Department</th>
+                            <th @click="changeSort('email')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Email</th>
+                            <th @click="changeSort('employment_type')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Employment Type</th>
+                            <th @click="changeSort('user_id')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Login Access</th>
+                            <th @click="changeSort('is_active')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-if="tableLoading">
+                            <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">Loading employees...</td>
+                        </tr>
+                        <tr v-else v-for="employee in employees.data" :key="employee.id" class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ employee.employee_id }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{ employee.full_name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ employee.position || '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ employee.department || '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ employee.email || '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {{ employee.employment_type }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span v-if="employee.user_id" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                     Yes
                                 </span>
                                 <span v-else class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
                                     No
                                 </span>
-                            </span>
-                        </template>
-                    </vxe-column>
-                    <vxe-column field="is_active" title="Status" sortable width="100">
-                        <template #default="slotProps">
-                            <span v-if="slotProps && slotProps.row" :class="slotProps.row.is_active ? 'text-green-600' : 'text-red-600'">
-                                {{ slotProps.row.is_active ? 'Active' : 'Inactive' }}
-                            </span>
-                        </template>
-                    </vxe-column>
-                </vxe-table>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span :class="employee.is_active ? 'text-green-600' : 'text-red-600'">
+                                    {{ employee.is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <button 
+                                        @click="editEmployee(employee)" 
+                                        class="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
+                                        title="Edit"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        @click="openLedger(employee)" 
+                                        class="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                                        title="Ledger"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        @click="deleteEmployee(employee)" 
+                                        class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                        title="Deactivate"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr v-if="!tableLoading && (!employees.data || employees.data.length === 0)">
+                            <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">No employees found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div v-if="employees.data && employees.data.length > 0" class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            Showing {{ employees.from }} to {{ employees.to }} of {{ employees.total }} results
+                        </div>
+                        <div class="flex space-x-2">
+                            <button
+                                @click="changePage(employees.current_page - 1)"
+                                :disabled="employees.current_page === 1"
+                                class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                @click="changePage(employees.current_page + 1)"
+                                :disabled="employees.current_page === employees.last_page"
+                                class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -500,7 +515,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import axios from 'axios';
 import { useToast } from "vue-toastification";
 import LedgerModal from '../../components/LedgerModal.vue';
@@ -515,7 +530,6 @@ export default {
         const showLedgerModal = ref(false);
         const selectedEmployee = ref(null);
         const employees = ref({ data: [], from: 0, to: 0, total: 0, current_page: 1, last_page: 1 });
-        const employeesData = ref([]);
         const departments = ref([]);
         const tableExpanded = ref(true); // Table toggle state
         const showModal = ref(false);
@@ -563,11 +577,6 @@ export default {
             user_role: 'driver',
         });
 
-        // Watch for changes in employees.data and update employeesData
-        watch(() => employees.value.data, (newData) => {
-            employeesData.value = Array.isArray(newData) ? newData : [];
-        }, { immediate: true, deep: true });
-
         const loadEmployees = async () => {
             tableLoading.value = true;
             try {
@@ -581,6 +590,7 @@ export default {
                     params.append('sort_order', sortConfig.sortOrder);
                 }
                 params.append('per_page', 15);
+                params.append('page', employees.value.current_page || 1);
 
                 const response = await axios.get(`/api/employees?${params}`);
                 employees.value = response.data;
@@ -598,14 +608,22 @@ export default {
             window.location.href = `/admin/ledger?type=employee&id=${employee.id}`;
         };
 
-        const handlePageChange = ({ currentPage, pageSize }) => {
-            employees.value.current_page = currentPage;
+        const changePage = (page) => {
+            if (page < 1 || page > employees.value.last_page) {
+                return;
+            }
+            employees.value.current_page = page;
             loadEmployees();
         };
 
-        const handleSortChange = ({ property, order }) => {
-            sortConfig.sortBy = property;
-            sortConfig.sortOrder = order || 'asc';
+        const changeSort = (field) => {
+            if (sortConfig.sortBy === field) {
+                sortConfig.sortOrder = sortConfig.sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.sortBy = field;
+                sortConfig.sortOrder = 'asc';
+            }
+            employees.value.current_page = 1;
             loadEmployees();
         };
 
@@ -721,13 +739,6 @@ export default {
             }
         };
 
-        const changePage = (page) => {
-            if (page >= 1 && page <= employees.value.last_page) {
-                filters.page = page;
-                loadEmployees();
-            }
-        };
-
         onMounted(async () => {
             console.log('Employees component mounted');
             try {
@@ -739,7 +750,6 @@ export default {
 
         return {
             employees,
-            employeesData,
             departments,
             filters,
             form,
@@ -756,9 +766,8 @@ export default {
             saveEmployee,
             closeModal,
             changePage,
+            changeSort,
             tableLoading,
-            handlePageChange,
-            handleSortChange,
             sortConfig,
             tableExpanded,
             showLedgerModal,

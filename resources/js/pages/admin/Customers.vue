@@ -78,101 +78,116 @@
                     <span>{{ tableExpanded ? 'Collapse' : 'Expand' }}</span>
                 </button>
             </div>
-            <div v-show="tableExpanded">
-                <vxe-table
-                    :data="customers.data"
-                    :loading="tableLoading"
-                    stripe
-                    border
-                    highlight-hover-row
-                    height="600"
-                    :scroll-y="{ enabled: true, gt: 0 }"
-                    :sort-config="{ trigger: 'default', remote: true }"
-                    :pager-config="{
-                        enabled: true,
-                        currentPage: customers.current_page,
-                        pageSize: 15,
-                        total: customers.total,
-                        pageSizes: [10, 15, 20, 50, 100],
-                        layouts: ['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'FullJump', 'Total']
-                    }"
-                    @page-change="handlePageChange"
-                    @sort-change="handleSortChange"
-                >
-                    <vxe-column type="expand" width="60">
-                        <template #content="{ row }">
-                            <div class="p-4 flex gap-4 bg-gray-50">
-                                <button 
-                                    @click="editCustomer(row)" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-indigo-600 rounded-md text-indigo-600 hover:bg-indigo-50 text-sm font-medium"
-                                >
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Edit
-                                </button>
-                                <button 
-                                    @click="openLedger(row)" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-green-600 rounded-md text-green-600 hover:bg-green-50 text-sm font-medium"
-                                >
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    Ledger
-                                </button>
-                                <button 
-                                    @click="deleteCustomer(row)" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-red-600 rounded-md text-red-600 hover:bg-red-50 text-sm font-medium"
-                                >
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    Delete
-                                </button>
-                                <button 
-                                    @click="viewCustomer(row)" 
-                                    class="inline-flex items-center px-3 py-1.5 border border-blue-600 rounded-md text-blue-600 hover:bg-blue-50 text-sm font-medium"
-                                >
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                    View
-                                </button>
-                            </div>
-                        </template>
-                    </vxe-column>
-                    <vxe-column field="customer_code" title="Customer Code" sortable width="150"></vxe-column>
-                    <vxe-column field="display_name" title="Name" sortable min-width="200">
-                        <template #default="{ row }">
-                            {{ row.display_name || row.full_name || row.company_name }}
-                        </template>
-                    </vxe-column>
-                    <vxe-column field="customer_type" title="Type" sortable width="120">
-                        <template #default="{ row }">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                {{ row.customer_type }}
-                            </span>
-                        </template>
-                    </vxe-column>
-                    <vxe-column field="email" title="Email" sortable width="200"></vxe-column>
-                    <vxe-column field="phone" title="Phone" sortable width="150"></vxe-column>
-                    <vxe-column field="current_balance" title="Balance" sortable width="150" align="right">
-                        <template #default="{ row }">
-                            <span :class="getBalanceClass(row.current_balance)">
-                                {{ formatCurrency(row.current_balance) }}
-                            </span>
-                        </template>
-                    </vxe-column>
-                    <vxe-column field="is_active" title="Status" sortable width="100">
-                        <template #default="{ row }">
-                            <span :class="row.is_active ? 'text-green-600' : 'text-red-600'">
-                                {{ row.is_active ? 'Active' : 'Inactive' }}
-                            </span>
-                        </template>
-                    </vxe-column>
-
-                </vxe-table>
+            <div v-show="tableExpanded" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th @click="changeSort('customer_code')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Customer Code</th>
+                            <th @click="changeSort('company_name')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th @click="changeSort('email')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Email</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                            <th @click="changeSort('current_balance')" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Balance</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-if="tableLoading">
+                            <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">Loading customers...</td>
+                        </tr>
+                        <tr v-else v-for="customer in customers.data" :key="customer.id" class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ customer.customer_code }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {{ customer.display_name || customer.full_name || customer.company_name }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {{ customer.customer_type }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ customer.email || '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ customer.phone || '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                <span :class="getBalanceClass(customer.current_balance)">
+                                    {{ formatCurrency(customer.current_balance) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span :class="customer.is_active ? 'text-green-600' : 'text-red-600'">
+                                    {{ customer.is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <button 
+                                        @click="editCustomer(customer)" 
+                                        class="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
+                                        title="Edit"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        @click="openLedger(customer)" 
+                                        class="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                                        title="Ledger"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        @click="deleteCustomer(customer)" 
+                                        class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                        title="Delete"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        @click="viewCustomer(customer)" 
+                                        class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                        title="View"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr v-if="!tableLoading && (!customers.data || customers.data.length === 0)">
+                            <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">No customers found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div v-if="customers.data && customers.data.length > 0" class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            Showing {{ customers.from }} to {{ customers.to }} of {{ customers.total }} results
+                        </div>
+                        <div class="flex space-x-2">
+                            <button
+                                @click="changePage(customers.current_page - 1)"
+                                :disabled="customers.current_page === 1"
+                                class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                @click="changePage(customers.current_page + 1)"
+                                :disabled="customers.current_page === customers.last_page"
+                                class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -442,6 +457,7 @@ export default {
                     params.append('sort_order', sortConfig.sortOrder);
                 }
                 params.append('per_page', 15);
+                params.append('page', customers.value.current_page || 1);
 
                 const response = await axios.get(`/api/customers?${params}`);
                 customers.value = response.data;
@@ -453,14 +469,22 @@ export default {
             }
         };
 
-        const handlePageChange = ({ currentPage, pageSize }) => {
-            customers.value.current_page = currentPage;
+        const changePage = (page) => {
+            if (page < 1 || page > customers.value.last_page) {
+                return;
+            }
+            customers.value.current_page = page;
             loadCustomers();
         };
 
-        const handleSortChange = ({ property, order }) => {
-            sortConfig.sortBy = property;
-            sortConfig.sortOrder = order || 'asc';
+        const changeSort = (field) => {
+            if (sortConfig.sortBy === field) {
+                sortConfig.sortOrder = sortConfig.sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.sortBy = field;
+                sortConfig.sortOrder = 'asc';
+            }
+            customers.value.current_page = 1;
             loadCustomers();
         };
 
@@ -610,13 +634,6 @@ export default {
             }
         };
 
-        const changePage = (page) => {
-            if (page >= 1 && page <= customers.value.last_page) {
-                filters.page = page;
-                loadCustomers();
-            }
-        };
-
         onMounted(() => {
             loadCustomers();
         });
@@ -642,10 +659,8 @@ export default {
             saveCustomer,
             deleteCustomer,
             changePage,
+            changeSort,
             tableLoading,
-            handlePageChange,
-
-            handleSortChange,
             sortConfig,
             tableExpanded,
             showLedgerModal,

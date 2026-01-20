@@ -146,91 +146,99 @@
                     <span>{{ tableExpanded ? 'Collapse' : 'Expand' }}</span>
                 </button>
             </div>
-            <div v-show="tableExpanded">
-                <vxe-table
-                    :key="`table-${accounts.total}-${accounts.current_page}`"
-                    :data="accountsData"
-                    :loading="tableLoading"
-                    stripe
-                    border
-                    highlight-hover-row
-                    height="600"
-                    :scroll-y="{ enabled: true, gt: 0 }"
-                    :sort-config="{ trigger: 'default', remote: true }"
-                    :pager-config="{
-                        enabled: true,
-                        currentPage: accounts.current_page,
-                        pageSize: 15,
-                        total: accounts.total,
-                        pageSizes: [10, 15, 20, 50, 100],
-                        layouts: ['PrevJump', 'PrevPage', 'Number', 'NextPage', 'NextJump', 'Sizes', 'FullJump', 'Total']
-                    }"
-                    @page-change="handlePageChange"
-                    @sort-change="handleSortChange"
-                >
-            <vxe-column field="account_code" title="Account Code" sortable width="150"></vxe-column>
-            <vxe-column field="account_name" title="Account Name" sortable min-width="200"></vxe-column>
-            <vxe-column field="account_type" title="Type" sortable width="120">
-                <template #default="scope">
-                    <span v-if="scope && scope.row" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="getTypeClass(scope.row.account_type)">
-                        {{ scope.row.account_type }}
-                    </span>
-                </template>
-            </vxe-column>
-            <vxe-column field="opening_balance" title="Opening Balance" sortable width="150" align="right">
-                <template #default="scope">
-                    <span v-if="scope && scope.row">{{ formatCurrency(scope.row.opening_balance) }}</span>
-                </template>
-            </vxe-column>
-            <vxe-column field="current_balance" title="Current Balance" sortable width="150" align="right">
-                <template #default="scope">
-                    <span v-if="scope && scope.row">{{ formatCurrency(scope.row.current_balance || 0) }}</span>
-                </template>
-            </vxe-column>
-            <vxe-column field="is_active" title="Status" sortable width="100">
-                <template #default="scope">
-                    <span v-if="scope && scope.row" :class="scope.row.is_active ? 'text-green-600' : 'text-red-600'">
-                        {{ scope.row.is_active ? 'Active' : 'Inactive' }}
-                    </span>
-                </template>
-            </vxe-column>
-            <vxe-column title="Actions" width="140" fixed="right" align="center">
-                <template #default="scope">
-                    <template v-if="scope && scope.row">
-                        <div class="flex items-center justify-center gap-2">
-                            <button 
-                                @click="viewAccount(scope.row)" 
-                                class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                                title="View"
+            <div v-show="tableExpanded" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th @click="changeSort('account_code')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Account Code</th>
+                            <th @click="changeSort('account_name')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Account Name</th>
+                            <th @click="changeSort('account_type')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Type</th>
+                            <th @click="changeSort('opening_balance')" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Opening Balance</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Current Balance</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-if="tableLoading">
+                            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">Loading accounts...</td>
+                        </tr>
+                        <tr v-else v-for="account in accounts.data" :key="account.id" class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ account.account_code }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{ account.account_name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="getTypeClass(account.account_type)">
+                                    {{ account.account_type }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">{{ formatCurrency(account.opening_balance) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">{{ formatCurrency(account.current_balance || 0) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span :class="account.is_active ? 'text-green-600' : 'text-red-600'">
+                                    {{ account.is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <button 
+                                        @click="viewAccount(account)" 
+                                        class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                        title="View"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        @click="editAccount(account)" 
+                                        class="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
+                                        title="Edit"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                    <button 
+                                        @click="deleteAccount(account)" 
+                                        class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                        title="Delete"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr v-if="!tableLoading && (!accounts.data || accounts.data.length === 0)">
+                            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">No accounts found</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div v-if="accounts.data && accounts.data.length > 0" class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            Showing {{ accounts.from }} to {{ accounts.to }} of {{ accounts.total }} results
+                        </div>
+                        <div class="flex space-x-2">
+                            <button
+                                @click="changePage(accounts.current_page - 1)"
+                                :disabled="accounts.current_page === 1"
+                                class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                                Previous
                             </button>
-                            <button 
-                                @click="editAccount(scope.row)" 
-                                class="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
-                                title="Edit"
+                            <button
+                                @click="changePage(accounts.current_page + 1)"
+                                :disabled="accounts.current_page === accounts.last_page"
+                                class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                            </button>
-                            <button 
-                                @click="deleteAccount(scope.row)" 
-                                class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-                                title="Delete"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
+                                Next
                             </button>
                         </div>
-                    </template>
-                </template>
-            </vxe-column>
-                </vxe-table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -381,18 +389,6 @@ export default {
         const { confirmDelete } = useConfirmDialog();
         const accounts = ref({ data: [], from: 0, to: 0, total: 0, current_page: 1, last_page: 1 });
         
-        // Use a ref for table data to ensure vxe-table reactivity
-        const accountsData = ref([]);
-        
-        // Watch accounts and update accountsData when data changes
-        watch(() => accounts.value?.data, (newData) => {
-            if (Array.isArray(newData)) {
-                accountsData.value = [...newData]; // Create a new array to ensure reactivity
-            } else {
-                accountsData.value = [];
-            }
-        }, { immediate: true, deep: true });
-        
         const parentAccounts = ref([]);
         const showModal = ref(false);
         const editingAccount = ref(null);
@@ -450,18 +446,10 @@ export default {
                     params.append('sort_order', sortConfig.sortOrder);
                 }
                 params.append('per_page', 15);
+                params.append('page', accounts.value.current_page || 1);
 
                 const response = await axios.get(`/api/accounts?${params}`);
-                console.log('Accounts API Response:', response.data);
-                // Keep the full pagination object, not just the data array
                 accounts.value = response.data;
-                // The watcher will update accountsData, but we can also set it directly
-                if (Array.isArray(response.data.data)) {
-                    accountsData.value = [...response.data.data];
-                }
-                console.log('Accounts value after assignment:', accounts.value);
-                console.log('AccountsData ref:', accountsData.value);
-                console.log('AccountsData length:', accountsData.value.length);
             } catch (error) {
                 console.error('Error loading accounts:', error);
                 if (error.response) {
@@ -477,17 +465,26 @@ export default {
             filters.search = '';
             filters.account_type = '';
             filters.is_active = '';
+            accounts.value.current_page = 1;
             loadAccounts();
         };
 
-        const handlePageChange = ({ currentPage, pageSize }) => {
-            accounts.value.current_page = currentPage;
+        const changePage = (page) => {
+            if (page < 1 || page > accounts.value.last_page) {
+                return;
+            }
+            accounts.value.current_page = page;
             loadAccounts();
         };
 
-        const handleSortChange = ({ property, order }) => {
-            sortConfig.sortBy = property;
-            sortConfig.sortOrder = order || 'asc';
+        const changeSort = (field) => {
+            if (sortConfig.sortBy === field) {
+                sortConfig.sortOrder = sortConfig.sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.sortBy = field;
+                sortConfig.sortOrder = 'asc';
+            }
+            accounts.value.current_page = 1;
             loadAccounts();
         };
 
@@ -616,20 +613,12 @@ export default {
             }
         };
 
-        const changePage = (page) => {
-            if (page >= 1 && page <= accounts.value.last_page) {
-                accounts.value.current_page = page;
-                loadAccounts();
-            }
-        };
-
         onMounted(() => {
             loadAccounts();
         });
 
         return {
             accounts,
-            accountsData,
             parentAccounts,
             filters,
             clearFilters,
@@ -647,9 +636,8 @@ export default {
             saveAccount,
             deleteAccount,
             changePage,
+            changeSort,
             tableLoading,
-            handlePageChange,
-            handleSortChange,
             sortConfig,
             viewMode,
             accountTree,

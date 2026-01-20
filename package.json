@@ -10,8 +10,7 @@
         "axios": "^1.11.0",
         "vue": "^3.5.0",
         "vue-router": "^4.4.0",
-        "vue-toastification": "^2.0.0-rc.5",
-        "vxe-table": "^4.17.40"
+        "vue-toastification": "^2.0.0-rc.5"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
