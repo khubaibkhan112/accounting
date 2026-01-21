@@ -3,6 +3,8 @@
 namespace App\Traits;
 
 use App\Models\JournalEntryItem;
+use App\Models\JournalEntry;
+use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -21,7 +23,7 @@ trait LedgerTrait
     protected function getEntityLedgerData(Model $entity, Request $request, string $foreignKey, string $balanceType = 'asset'): array
     {
         // Build query for journal entry items linked to the entity
-        $query = JournalEntryItem::query()
+        $journalQuery = JournalEntryItem::query()
             ->select([
                 'journal_entry_items.id',
                 'journal_entry_items.debit_amount',
@@ -38,17 +40,17 @@ trait LedgerTrait
 
         // Filter by date range
         if ($request->has('date_from') && $request->date_from) {
-            $query->where('journal_entries.entry_date', '>=', $request->date_from);
+            $journalQuery->where('journal_entries.entry_date', '>=', $request->date_from);
         }
 
         if ($request->has('date_to') && $request->date_to) {
-            $query->where('journal_entries.entry_date', '<=', $request->date_to);
+            $journalQuery->where('journal_entries.entry_date', '<=', $request->date_to);
         }
 
         // Search functionality
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $journalQuery->where(function ($q) use ($search) {
                 $q->where('journal_entry_items.description', 'like', "%{$search}%")
                   ->orWhere('journal_entries.description', 'like', "%{$search}%")
                   ->orWhere('journal_entries.reference_number', 'like', "%{$search}%");
@@ -57,23 +59,82 @@ trait LedgerTrait
 
         // Sorting
         // Default to date asc, then id asc for running balance consistency
-        $query->orderBy('journal_entries.entry_date', 'asc')->orderBy('journal_entry_items.id', 'asc');
+        $journalQuery->orderBy('journal_entries.entry_date', 'asc')->orderBy('journal_entry_items.id', 'asc');
 
-        // Get transactions
-        $items = $query->get();
+        // Journal items for this entity
+        $journalItems = $journalQuery->get();
+
+        // Collect linked transaction ids (to avoid duplicates if journal entries already linked)
+        $linkedTransactionIds = JournalEntry::query()
+            ->whereNotNull('transaction_id')
+            ->where($foreignKey, $entity->id)
+            ->pluck('transaction_id')
+            ->filter()
+            ->values();
+
+        // Transactions for this entity (legacy data or not yet journaled)
+        $transactionQuery = Transaction::query()
+            ->select([
+                'id',
+                'date',
+                'description',
+                'reference_number',
+                'transaction_no',
+                'debit_amount',
+                'credit_amount',
+                'created_at',
+            ])
+            ->where($foreignKey, $entity->id);
+
+        if ($linkedTransactionIds->isNotEmpty()) {
+            $transactionQuery->whereNotIn('id', $linkedTransactionIds);
+        }
+
+        if ($request->has('date_from') && $request->date_from) {
+            $transactionQuery->where('date', '>=', $request->date_from);
+        }
+
+        if ($request->has('date_to') && $request->date_to) {
+            $transactionQuery->where('date', '<=', $request->date_to);
+        }
+
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $transactionQuery->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                  ->orWhere('reference_number', 'like', "%{$search}%")
+                  ->orWhere('transaction_no', 'like', "%{$search}%");
+            });
+        }
+
+        $transactions = $transactionQuery->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
 
         // Calculate opening balance
         $openingBalance = (float) ($entity->opening_balance ?? 0);
         
         // Determine start date for opening balance calculation
-        $dateFrom = $request->date_from ?? ($items->min('entry_date') ? Carbon::parse($items->min('entry_date'))->format('Y-m-d') : null);
+        $earliestJournalDate = $journalItems->min('entry_date');
+        $earliestTransactionDate = $transactions->min('date');
+        $earliestDate = $earliestJournalDate ?: $earliestTransactionDate;
+        if ($earliestJournalDate && $earliestTransactionDate) {
+            $earliestDate = Carbon::parse($earliestJournalDate)->lte(Carbon::parse($earliestTransactionDate))
+                ? $earliestJournalDate
+                : $earliestTransactionDate;
+        }
+
+        $dateFrom = $request->date_from ?? ($earliestDate ? Carbon::parse($earliestDate)->format('Y-m-d') : null);
         
         // If date_from is specified, calculate opening balance up to that date
         // Even if not specified, if we have transactions, we might want to start from the beginning.
         // But here, if no date_from, we just start with entity's opening_balance and list all transactions.
         
         if ($request->has('date_from') && $request->date_from) {
-             $openingBalance = $this->calculateOpeningBalanceForEntity($entity, $foreignKey, $request->date_from, $balanceType);
+            $openingBalance = $this->calculateOpeningBalanceForEntity(
+                $entity,
+                $foreignKey,
+                $request->date_from,
+                $balanceType
+            );
         }
 
         // Prepare ledger data
@@ -96,23 +157,63 @@ trait LedgerTrait
         }
 
         // Add transactions with running balance
-        foreach ($items as $item) {
-            $debit = (float) $item->debit_amount;
-            $credit = (float) $item->credit_amount;
-            $description = $item->description ?: $item->entry_description;
-            
-            $runningBalance = $this->adjustBalanceByType($runningBalance, $balanceType, $debit, $credit);
-            
-            $ledgerData[] = [
+        $combinedItems = [];
+
+        foreach ($journalItems as $item) {
+            $combinedItems[] = [
+                'source' => 'journal',
                 'id' => $item->id,
                 'date' => Carbon::parse($item->entry_date)->format('Y-m-d'),
-                'description' => $description,
+                'debit' => (float) $item->debit_amount,
+                'credit' => (float) $item->credit_amount,
+                'description' => $item->description ?: $item->entry_description,
                 'reference_number' => $item->reference_number,
-                'debit_amount' => $debit,
-                'credit_amount' => $credit,
-                'balance' => $runningBalance,
-                'type' => 'journal',
                 'created_at' => Carbon::parse($item->created_at)->format('Y-m-d H:i:s'),
+                'sort_date' => Carbon::parse($item->entry_date)->format('Y-m-d'),
+                'sort_id' => $item->id,
+            ];
+        }
+
+        foreach ($transactions as $transaction) {
+            $combinedItems[] = [
+                'source' => 'transaction',
+                'id' => $transaction->id,
+                'date' => Carbon::parse($transaction->date)->format('Y-m-d'),
+                'debit' => (float) $transaction->debit_amount,
+                'credit' => (float) $transaction->credit_amount,
+                'description' => $transaction->description,
+                'reference_number' => $transaction->reference_number ?: $transaction->transaction_no,
+                'created_at' => Carbon::parse($transaction->created_at)->format('Y-m-d H:i:s'),
+                'sort_date' => Carbon::parse($transaction->date)->format('Y-m-d'),
+                'sort_id' => $transaction->id,
+            ];
+        }
+
+        usort($combinedItems, function ($a, $b) {
+            if ($a['sort_date'] === $b['sort_date']) {
+                return $a['sort_id'] <=> $b['sort_id'];
+            }
+            return strcmp($a['sort_date'], $b['sort_date']);
+        });
+
+        foreach ($combinedItems as $item) {
+            $runningBalance = $this->adjustBalanceByType(
+                $runningBalance,
+                $balanceType,
+                $item['debit'],
+                $item['credit']
+            );
+
+            $ledgerData[] = [
+                'id' => $item['id'],
+                'date' => $item['date'],
+                'description' => $item['description'],
+                'reference_number' => $item['reference_number'],
+                'debit_amount' => $item['debit'],
+                'credit_amount' => $item['credit'],
+                'balance' => $runningBalance,
+                'type' => $item['source'],
+                'created_at' => $item['created_at'],
             ];
         }
 
@@ -124,8 +225,8 @@ trait LedgerTrait
         }
 
         // Calculate totals
-        $totalDebit = $items->sum('debit_amount');
-        $totalCredit = $items->sum('credit_amount');
+        $totalDebit = collect($combinedItems)->sum('debit');
+        $totalCredit = collect($combinedItems)->sum('credit');
 
         return [
             'entity' => $entity,
@@ -135,7 +236,7 @@ trait LedgerTrait
             'closing_balance' => $runningBalance, // This is the balance at the end of the period
             'total_debit' => (float) $totalDebit,
             'total_credit' => (float) $totalCredit,
-            'transactions_count' => $items->count(),
+            'transactions_count' => count($combinedItems),
             'ledger' => $ledgerData,
         ];
     }
@@ -147,7 +248,7 @@ trait LedgerTrait
     {
         $openingBalance = (float) ($entity->opening_balance ?? 0);
 
-        // Get all transactions before the date
+        // Journal items before the date
         $previousItems = JournalEntryItem::query()
             ->join('journal_entries', 'journal_entries.id', '=', 'journal_entry_items.journal_entry_id')
             ->where("journal_entries.$foreignKey", $entity->id)
@@ -156,18 +257,36 @@ trait LedgerTrait
             ->orderBy('journal_entry_items.id', 'asc')
             ->get(['journal_entry_items.debit_amount', 'journal_entry_items.credit_amount']);
 
-        // Calculate balance up to the date
-        $balance = $openingBalance;
-        foreach ($previousItems as $item) {
-            $balance = $this->adjustBalanceByType(
-                $balance, 
-                $balanceType, 
-                (float) $item->debit_amount, 
-                (float) $item->credit_amount
-            );
+        $journalDebit = (float) $previousItems->sum('debit_amount');
+        $journalCredit = (float) $previousItems->sum('credit_amount');
+
+        // Transactions before the date (excluding those already linked to journal entries)
+        $linkedTransactionIds = JournalEntry::query()
+            ->whereNotNull('transaction_id')
+            ->where($foreignKey, $entity->id)
+            ->pluck('transaction_id')
+            ->filter()
+            ->values();
+
+        $transactionQuery = Transaction::query()
+            ->where($foreignKey, $entity->id)
+            ->where('date', '<', $date);
+
+        if ($linkedTransactionIds->isNotEmpty()) {
+            $transactionQuery->whereNotIn('id', $linkedTransactionIds);
         }
 
-        return $balance;
+        $transactionDebit = (float) $transactionQuery->sum('debit_amount');
+        $transactionCredit = (float) $transactionQuery->sum('credit_amount');
+
+        $totalDebit = $journalDebit + $transactionDebit;
+        $totalCredit = $journalCredit + $transactionCredit;
+
+        if ($balanceType === 'asset') {
+            return $openingBalance + $totalDebit - $totalCredit;
+        }
+
+        return $openingBalance + $totalCredit - $totalDebit;
     }
 
     /**

@@ -41,7 +41,7 @@ class JournalEntryController extends Controller
             'creator:id,name,email',
             'customer:id,customer_code,company_name,first_name,last_name',
             'employee:id,employee_id,first_name,last_name',
-            'transaction:id,reference_number,date,account_id,description',
+            'transaction:id,transaction_no,reference_number,date,account_id,description',
             'items:id,journal_entry_id,account_id,debit_amount,credit_amount,description',
             'items.account:id,account_code,account_name,account_type',
         ]);
@@ -168,7 +168,7 @@ class JournalEntryController extends Controller
                 'creator:id,name,email',
                 'customer:id,customer_code,company_name,first_name,last_name',
                 'employee:id,employee_id,first_name,last_name',
-                'transaction:id,reference_number,date,account_id,description',
+                'transaction:id,transaction_no,reference_number,date,account_id,description',
                 'items:id,journal_entry_id,account_id,debit_amount,credit_amount,description',
                 'items.account:id,account_code,account_name,account_type',
             ]);
@@ -211,7 +211,7 @@ class JournalEntryController extends Controller
             'creator:id,name,email',
             'customer:id,customer_code,company_name,first_name,last_name',
             'employee:id,employee_id,first_name,last_name',
-            'transaction:id,reference_number,date,account_id,description',
+            'transaction:id,transaction_no,reference_number,date,account_id,description',
             'items:id,journal_entry_id,account_id,debit_amount,credit_amount,description',
             'items.account:id,account_code,account_name,account_type,opening_balance',
         ]);
@@ -296,7 +296,7 @@ class JournalEntryController extends Controller
                 'creator:id,name,email',
                 'customer:id,customer_code,company_name,first_name,last_name',
                 'employee:id,employee_id,first_name,last_name',
-                'transaction:id,reference_number,date,account_id,description',
+                'transaction:id,transaction_no,reference_number,date,account_id,description',
                 'items:id,journal_entry_id,account_id,debit_amount,credit_amount,description',
                 'items.account:id,account_code,account_name,account_type',
             ]);

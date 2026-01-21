@@ -264,14 +264,25 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Transaction ID (Optional)</label>
-                                    <input
-                                        type="number"
-                                        v-model="form.transaction_id"
-                                        min="1"
-                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                        placeholder="Enter transaction ID"
-                                    />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Transaction No (Optional)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            v-model="transactionNoInput"
+                                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                            placeholder="Enter transaction no (e.g. TRN000001)"
+                                        />
+                                        <button
+                                            type="button"
+                                            @click="loadTransactionByNumber"
+                                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md border border-gray-300 hover:bg-gray-200"
+                                        >
+                                            Load
+                                        </button>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        Loads transaction details and fills one line item.
+                                    </p>
                                 </div>
                             </div>
 
@@ -652,6 +663,7 @@ export default {
                 { account_id: '', debit_amount: 0, credit_amount: 0, description: '' },
             ],
         });
+        const transactionNoInput = ref('');
 
         const formatCurrency = (amount) => formatCurrencyValue(amount);
 
@@ -683,6 +695,43 @@ export default {
                 item.credit_amount = 0;
             } else if (type === 'credit' && item.credit_amount > 0) {
                 item.debit_amount = 0;
+            }
+        };
+
+        const loadTransactionByNumber = async () => {
+            const transactionNo = transactionNoInput.value?.trim();
+            if (!transactionNo) return;
+
+            try {
+                const response = await axios.get('/api/transactions', {
+                    params: { transaction_no: transactionNo, per_page: 1 },
+                });
+
+                const transaction = response.data?.data?.[0];
+                if (!transaction) {
+                    alert('Transaction not found.');
+                    return;
+                }
+
+                form.transaction_id = transaction.id;
+                form.entry_date = transaction.date || form.entry_date;
+                form.description = transaction.description || form.description;
+                form.reference_number = transaction.reference_number || transaction.transaction_no || form.reference_number;
+                form.customer_id = transaction.customer_id || form.customer_id;
+                form.employee_id = transaction.employee_id || form.employee_id;
+
+                form.items = [
+                    {
+                        account_id: transaction.account_id,
+                        debit_amount: Number(transaction.debit_amount) || 0,
+                        credit_amount: Number(transaction.credit_amount) || 0,
+                        description: transaction.description || '',
+                    },
+                    { account_id: '', debit_amount: 0, credit_amount: 0, description: '' },
+                ];
+            } catch (error) {
+                console.error('Failed to load transaction:', error);
+                alert(error.response?.data?.message || 'Failed to load transaction.');
             }
         };
 
@@ -830,6 +879,7 @@ export default {
                 form.customer_id = entryData.customer_id || '';
                 form.employee_id = entryData.employee_id || '';
                 form.transaction_id = entryData.transaction_id || '';
+                transactionNoInput.value = entryData.transaction?.transaction_no || '';
                 form.items = entryData.items.map(item => ({
                     account_id: item.account_id,
                     debit_amount: parseFloat(item.debit_amount) || 0,
@@ -865,6 +915,7 @@ export default {
             form.customer_id = '';
             form.employee_id = '';
             form.transaction_id = '';
+            transactionNoInput.value = '';
             form.items = [
                 { account_id: '', debit_amount: 0, credit_amount: 0, description: '' },
                 { account_id: '', debit_amount: 0, credit_amount: 0, description: '' },
@@ -956,6 +1007,9 @@ export default {
                     entry_date: form.entry_date,
                     description: form.description,
                     reference_number: form.reference_number || null,
+                    customer_id: form.customer_id || null,
+                    employee_id: form.employee_id || null,
+                    transaction_id: form.transaction_id || null,
                     items: form.items.map(item => ({
                         account_id: item.account_id,
                         debit_amount: parseFloat(item.debit_amount) || 0,
@@ -1038,6 +1092,8 @@ export default {
             formatDate,
             tableExpanded,
             handleItemAmountChange,
+            loadTransactionByNumber,
+            transactionNoInput,
             addItem,
             removeItem,
             loadJournalEntries,

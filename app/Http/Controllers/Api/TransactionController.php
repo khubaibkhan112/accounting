@@ -81,6 +81,11 @@ class TransactionController extends Controller
             $query->where('id', $request->transaction_id);
         }
 
+        // Filter by transaction number
+        if ($request->has('transaction_no') && $request->transaction_no) {
+            $query->where('transaction_no', $request->transaction_no);
+        }
+
         // Filter by date range
         if ($request->has('date_from') && $request->date_from) {
             $query->where('date', '>=', $request->date_from);
