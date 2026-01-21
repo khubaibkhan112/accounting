@@ -126,6 +126,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TR No</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
@@ -141,6 +142,18 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <tr v-for="transaction in transactions.data" :key="transaction.id" class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <button
+                                    v-if="transaction.transaction_no"
+                                    type="button"
+                                    class="text-blue-600 hover:text-blue-800"
+                                    :title="copiedTransactionNo === transaction.transaction_no ? 'Copied' : 'Copy'"
+                                    @click="copyTransactionNumber(transaction.transaction_no)"
+                                >
+                                    {{ transaction.transaction_no }}
+                                </button>
+                                <span v-else class="text-gray-400">-</span>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(transaction.date) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <div>{{ transaction.account?.account_code }}</div>
@@ -877,6 +890,7 @@
 
 <script>
 import { ref, reactive, onMounted, computed } from 'vue';
+import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { validateForm, hasErrors, clearError, validators } from '@/utils/validation';
 import { formatCurrency as formatCurrencyValue, getSetting } from '@/utils/settings';
@@ -885,12 +899,14 @@ export default {
     name: 'Transactions',
     setup() {
         const transactions = ref({ data: [], from: 0, to: 0, total: 0, current_page: 1, last_page: 1 });
+        const route = useRoute();
         const accounts = ref([]);
         const customers = ref([]);
         const tableExpanded = ref(true); // Table toggle state
         const employees = ref([]);
         const vehicles = ref([]);
         const showModal = ref(false);
+        const copiedTransactionNo = ref(null);
         const showCustomerModal = ref(false);
         const showEmployeeModal = ref(false);
         const showVehicleModal = ref(false);
@@ -909,6 +925,7 @@ export default {
             transaction_type: '',
             date_from: '',
             date_to: '',
+            transaction_id: '',
             page: 1,
         });
 
@@ -1105,6 +1122,21 @@ export default {
             });
         };
 
+        const copyTransactionNumber = async (transactionNo) => {
+            if (!transactionNo) return;
+            try {
+                await navigator.clipboard.writeText(String(transactionNo));
+                copiedTransactionNo.value = transactionNo;
+                setTimeout(() => {
+                    if (copiedTransactionNo.value === transactionNo) {
+                        copiedTransactionNo.value = null;
+                    }
+                }, 1500);
+            } catch (error) {
+                console.error('Failed to copy transaction number:', error);
+            }
+        };
+
         const handleAmountInput = (type) => {
             // Ensure only one amount is entered at a time
             if (type === 'debit' && form.debit_amount && parseFloat(form.debit_amount) > 0) {
@@ -1194,6 +1226,7 @@ export default {
                 if (filters.transaction_type) params.append('transaction_type', filters.transaction_type);
                 if (filters.date_from) params.append('date_from', filters.date_from);
                 if (filters.date_to) params.append('date_to', filters.date_to);
+                if (filters.transaction_id) params.append('transaction_id', filters.transaction_id);
                 params.append('per_page', 15);
                 params.append('page', filters.page || 1);
 
@@ -1683,6 +1716,9 @@ export default {
         };
 
         onMounted(() => {
+            if (route.query.transaction_id) {
+                filters.transaction_id = route.query.transaction_id;
+            }
             loadTransactions();
             loadAccounts();
             loadCustomers();
@@ -1706,6 +1742,8 @@ export default {
             loading,
             formatCurrency,
             formatDate,
+            copyTransactionNumber,
+            copiedTransactionNo,
             handleAmountInput,
             loadTransactions,
             openCreateModal,

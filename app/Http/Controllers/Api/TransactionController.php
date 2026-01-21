@@ -27,6 +27,7 @@ class TransactionController extends Controller
         
         $query = Transaction::select([
             'id',
+            'transaction_no',
             'date',
             'account_id',
             'customer_id',
@@ -75,6 +76,11 @@ class TransactionController extends Controller
             $query->where('transaction_type', $request->transaction_type);
         }
 
+        // Filter by transaction id
+        if ($request->has('transaction_id') && $request->transaction_id) {
+            $query->where('id', $request->transaction_id);
+        }
+
         // Filter by date range
         if ($request->has('date_from') && $request->date_from) {
             $query->where('date', '>=', $request->date_from);
@@ -89,14 +95,15 @@ class TransactionController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
-                  ->orWhere('reference_number', 'like', "%{$search}%");
+                  ->orWhere('reference_number', 'like', "%{$search}%")
+                  ->orWhere('transaction_no', 'like', "%{$search}%");
             });
         }
 
         // Sorting - default by date desc, then id desc
         $sortBy = $request->get('sort_by', 'date');
         $sortOrder = $request->get('sort_order', 'desc');
-        $validSortFields = ['date', 'debit_amount', 'credit_amount', 'reference_number', 'created_at'];
+        $validSortFields = ['date', 'debit_amount', 'credit_amount', 'reference_number', 'transaction_no', 'created_at'];
         
         if (in_array($sortBy, $validSortFields)) {
             $query->orderBy($sortBy, $sortOrder);
@@ -143,8 +150,11 @@ class TransactionController extends Controller
                 $referenceNumber = $this->generateReferenceNumber('TRX');
             }
 
+            $transactionNo = $this->generateTransactionNumber();
+
             // Create transaction (balance will be calculated after)
             $transaction = Transaction::create([
+                'transaction_no' => $transactionNo,
                 'date' => $transactionDate,
                 'account_id' => $request->account_id,
                 'customer_id' => $request->customer_id,
@@ -308,6 +318,27 @@ class TransactionController extends Controller
         }
 
         return $reference;
+    }
+
+    private function generateTransactionNumber(): string
+    {
+        $lastTransaction = Transaction::whereNotNull('transaction_no')->orderBy('id', 'desc')->first();
+        $lastNumber = 0;
+
+        if ($lastTransaction && $lastTransaction->transaction_no) {
+            $digits = preg_replace('/\D+/', '', $lastTransaction->transaction_no);
+            $lastNumber = $digits ? (int) $digits : 0;
+        }
+
+        $nextNumber = $lastNumber + 1;
+        $transactionNo = 'TRN' . str_pad((string) $nextNumber, 6, '0', STR_PAD_LEFT);
+
+        while (Transaction::where('transaction_no', $transactionNo)->exists()) {
+            $nextNumber++;
+            $transactionNo = 'TRN' . str_pad((string) $nextNumber, 6, '0', STR_PAD_LEFT);
+        }
+
+        return $transactionNo;
     }
 
     /**

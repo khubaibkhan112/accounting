@@ -9,7 +9,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CfGjxw-c.js",
+    "file": "assets/app-DMusxX-K.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -21,7 +21,7 @@
     ]
   },
   "resources/js/pages/admin/Profile.vue": {
-    "file": "assets/Profile-DjMW_X_O.js",
+    "file": "assets/Profile-DA38dNUf.js",
     "name": "Profile",
     "src": "resources/js/pages/admin/Profile.vue",
     "isDynamicEntry": true,

@@ -78,6 +78,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Debit</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Credit</th>
@@ -90,6 +91,16 @@
                         <tr v-for="entry in journalEntries.data" :key="entry.id" class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(entry.entry_date) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ entry.reference_number || '-' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <router-link
+                                    v-if="entry.transaction_id"
+                                    :to="`/admin/transactions?transaction_id=${entry.transaction_id}`"
+                                    class="text-blue-600 hover:text-blue-800"
+                                >
+                                    #{{ entry.transaction_id }}
+                                </router-link>
+                                <span v-else class="text-gray-400">-</span>
+                            </td>
                             <td class="px-6 py-4 text-sm text-gray-900">{{ entry.description }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
                                 {{ formatCurrency(entry.total_debit) }}
